@@ -1,0 +1,8 @@
+.env
+.runtime/
+artifacts/runs/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+__pycache__/
+.DS_Store

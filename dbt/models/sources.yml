@@ -1,0 +1,20 @@
+version: 2
+sources:
+  - name: silver
+    schema: silver
+    tables:
+      - name: orders
+      - name: payments
+      - name: refunds
+models:
+  - name: fct_order_settlement
+    description: Order-date basis net payments, not accounting revenue.
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: order_date
+        tests: [not_null]
+  - name: mart_daily_settlement
+    columns:
+      - name: order_date
+        tests: [unique, not_null]

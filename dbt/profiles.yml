@@ -1,0 +1,14 @@
+cdc_study:
+  target: lab
+  outputs:
+    lab:
+      type: spark
+      method: thrift
+      host: spark
+      port: 10000
+      user: lab
+      auth: NOSASL
+      schema: gold
+      threads: 1
+      connect_retries: 5
+      connect_timeout: 15

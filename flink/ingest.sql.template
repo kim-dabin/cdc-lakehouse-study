@@ -1,0 +1,51 @@
+SET 'execution.target' = 'remote';
+SET 'rest.address' = 'jobmanager';
+SET 'rest.port' = '8081';
+SET 'parallelism.default' = '1';
+SET 'pipeline.name' = 'cdc-bronze';
+SET 'execution.checkpointing.interval' = '__CHECKPOINT_INTERVAL__';
+SET 'execution.checkpointing.mode' = 'EXACTLY_ONCE';
+SET 'table.local-time-zone' = 'UTC';
+
+CREATE CATALOG lake WITH (
+ 'type'='iceberg', 'catalog-impl'='org.apache.iceberg.jdbc.JdbcCatalog',
+ 'uri'='jdbc:postgresql://catalog-db:5432/catalog',
+ 'jdbc.user'='catalog', 'jdbc.password'='__CATALOG_PASSWORD__',
+ 'warehouse'='s3://warehouse/',
+ 'io-impl'='org.apache.iceberg.aws.s3.S3FileIO',
+ 's3.endpoint'='http://minio:9000', 's3.path-style-access'='true',
+ 'client.region'='us-east-1'
+);
+CREATE DATABASE IF NOT EXISTS lake.`default`;
+CREATE DATABASE IF NOT EXISTS lake.bronze;
+CREATE DATABASE IF NOT EXISTS lake.silver;
+CREATE DATABASE IF NOT EXISTS lake.gold;
+CREATE TABLE IF NOT EXISTS lake.bronze.cdc_events (
+ payload STRING,
+ topic STRING,
+ partition_id INT,
+ kafka_offset BIGINT,
+ kafka_ts TIMESTAMP_LTZ(3),
+ ingested_at TIMESTAMP_LTZ(3)
+) WITH ('format-version'='2', 'write.format.default'='parquet');
+
+-- Raw envelopes are append records, not a decoded upsert changelog.
+-- Null Kafka tombstones are skipped; the preceding op=d envelope is retained.
+CREATE TEMPORARY TABLE kafka_events (
+ payload STRING,
+ topic STRING METADATA FROM 'topic' VIRTUAL,
+ partition_id INT METADATA FROM 'partition' VIRTUAL,
+ kafka_offset BIGINT METADATA FROM 'offset' VIRTUAL,
+ kafka_ts TIMESTAMP_LTZ(3) METADATA FROM 'timestamp' VIRTUAL
+) WITH (
+ 'connector'='kafka',
+ 'topic-pattern'='cdc.public.(orders|payments|refunds)',
+ 'properties.bootstrap.servers'='kafka:9092',
+ 'properties.group.id'='flink-cdc-bronze',
+ 'scan.startup.mode'='earliest-offset',
+ 'scan.topic-partition-discovery.interval'='5s',
+ 'format'='raw'
+);
+INSERT INTO lake.bronze.cdc_events
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL;

@@ -1,0 +1,182 @@
+name: ${COMPOSE_PROJECT_NAME:-cdc-study}
+x-aws: &aws
+  AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-lab_minio}
+  AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-lab_minio_password}
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+x-flink: &flink
+  build:
+    context: .
+    dockerfile: docker/flink/Dockerfile
+  image: cdc-study-flink:1.20.4-iceberg1.10.0
+  environment:
+    <<: *aws
+    CATALOG_PASSWORD: ${CATALOG_PASSWORD:-lab_catalog_password}
+    FLINK_PROPERTIES: |
+      jobmanager.rpc.address: jobmanager
+      taskmanager.numberOfTaskSlots: 2
+      parallelism.default: 1
+      jobmanager.memory.process.size: 1024m
+      taskmanager.memory.process.size: 1536m
+      state.checkpoints.dir: file:///opt/flink/state/checkpoints
+      state.savepoints.dir: file:///opt/flink/state/savepoints
+      execution.checkpointing.interval: ${CHECKPOINT_INTERVAL:-10s}
+      execution.checkpointing.externalized-checkpoint-retention: RETAIN_ON_CANCELLATION
+      restart-strategy.type: fixed-delay
+      restart-strategy.fixed-delay.attempts: 10
+      restart-strategy.fixed-delay.delay: 5s
+  volumes:
+    - .:/workspace:ro
+    - flink-state:/opt/flink/state
+services:
+  source-db:
+    image: postgres:17.6-alpine
+    command: [postgres, -c, wal_level=logical, -c, max_replication_slots=10, -c, max_wal_senders=10]
+    environment:
+      POSTGRES_USER: source
+      POSTGRES_PASSWORD: ${SOURCE_PASSWORD:-lab_source_password}
+      POSTGRES_DB: app
+    volumes:
+      - source-data:/var/lib/postgresql/data
+      - ./sql/01-source.sql:/docker-entrypoint-initdb.d/01-source.sql:ro
+    ports: ["127.0.0.1:25432:5432"]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U source -d app]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  catalog-db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: ${CATALOG_PASSWORD:-lab_catalog_password}
+      POSTGRES_DB: catalog
+    volumes: [catalog-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U catalog -d catalog]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+      CLUSTER_ID: cdcLabClassroom2026abcd
+    volumes: [kafka-data:/var/lib/kafka/data]
+    healthcheck:
+      test: [CMD-SHELL, /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  connect:
+    image: quay.io/debezium/connect:3.2.4.Final
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: cdc-lab
+      CONFIG_STORAGE_TOPIC: _connect_configs
+      OFFSET_STORAGE_TOPIC: _connect_offsets
+      STATUS_STORAGE_TOPIC: _connect_status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      HEAP_OPTS: -Xms256m -Xmx512m
+    depends_on:
+      kafka: {condition: service_healthy}
+      source-db: {condition: service_healthy}
+    ports: ["127.0.0.1:28083:8083"]
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-lab_minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-lab_minio_password}
+    volumes: [warehouse:/data]
+    ports: ["127.0.0.1:29000:9000", "127.0.0.1:29001:9001"]
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:9000/minio/health/live]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+    environment: *aws
+    depends_on:
+      minio: {condition: service_healthy}
+    entrypoint: [/bin/sh, -c]
+    command: ['mc alias set lab http://minio:9000 "$$AWS_ACCESS_KEY_ID" "$$AWS_SECRET_ACCESS_KEY" && mc mb --ignore-existing lab/warehouse']
+  jobmanager:
+    <<: *flink
+    command: jobmanager
+    depends_on:
+      catalog-db: {condition: service_healthy}
+      minio-init: {condition: service_completed_successfully}
+    ports: ["127.0.0.1:28081:8081"]
+  taskmanager:
+    <<: *flink
+    command: taskmanager
+    depends_on: [jobmanager]
+  spark:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+    environment:
+      <<: *aws
+      CATALOG_PASSWORD: ${CATALOG_PASSWORD:-lab_catalog_password}
+    depends_on:
+      catalog-db: {condition: service_healthy}
+      minio-init: {condition: service_completed_successfully}
+    ports: ["127.0.0.1:24040:4040", "127.0.0.1:21000:10000"]
+  runner:
+    build:
+      context: .
+      dockerfile: docker/runner/Dockerfile
+    environment:
+      SOURCE_PASSWORD: ${SOURCE_PASSWORD:-lab_source_password}
+      CATALOG_PASSWORD: ${CATALOG_PASSWORD:-lab_catalog_password}
+      CHECKPOINT_INTERVAL: ${CHECKPOINT_INTERVAL:-10s}
+      DBT_PROFILES_DIR: /workspace/dbt
+      PYTHONPATH: /workspace
+    command: [python, scripts/runner_api.py]
+    volumes: [.:/workspace]
+    depends_on: [spark, connect, jobmanager]
+  airflow:
+    image: apache/airflow:2.10.5-python3.11
+    profiles: [orchestration]
+    command: standalone
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__PARALLELISM: 1
+      AIRFLOW__SCHEDULER__PARSING_PROCESSES: 1
+      AIRFLOW__WEBSERVER__WORKERS: 1
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    volumes:
+      - airflow-home:/opt/airflow
+      - ./airflow/dags:/opt/airflow/dags:ro
+    ports: ["127.0.0.1:28080:8080"]
+    depends_on: [runner]
+
+volumes:
+  source-data:
+  catalog-data:
+  kafka-data:
+  warehouse:
+  flink-state:
+  airflow-home:

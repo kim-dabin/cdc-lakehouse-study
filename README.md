@@ -2,7 +2,7 @@
 
 부트스트랩 정규 과정을 바탕으로 진행하는 8회 실무 프로젝트 스터디의 강사 참고 구현과 실습 가이드입니다. PostgreSQL의 변경을 Iceberg에 실시간으로 쌓고, Spark SQL과 dbt로 분석 마트를 만듭니다. 실행 환경은 **Mac mini**, 코드 공유는 **GitHub**입니다.
 
-[전체 아키텍처](docs/architecture.md) · [8회 실습](labs/README.md) · [개인 프로젝트 설계서](docs/project-template.md) · [운영 방법](docs/operations.md) · [검증 결과](docs/verification.md)
+[1회차 수업 자료](labs/session01/README.md) · [전체 아키텍처](docs/architecture.md) · [8회 실습](labs/README.md) · [개인 프로젝트 설계서](docs/project-template.md) · [운영 방법](docs/operations.md) · [검증 결과](docs/verification.md)
 
 ![전체 아키텍처](docs/architecture.png)
 

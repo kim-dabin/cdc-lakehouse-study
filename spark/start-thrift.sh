@@ -16,6 +16,9 @@ exec /opt/spark/bin/spark-submit \
  --conf spark.sql.catalog.lake.s3.endpoint=http://minio:9000 \
  --conf spark.sql.catalog.lake.s3.path-style-access=true \
  --conf spark.sql.catalog.lake.client.region=us-east-1 \
+ --conf spark.sql.ui.retainedExecutions=50 \
+ --conf spark.ui.retainedJobs=50 \
+ --conf spark.ui.retainedStages=100 \
  --conf spark.sql.shuffle.partitions=2 \
  --conf spark.sql.session.timeZone=UTC \
  --conf spark.sql.hive.thriftServer.singleSession=true \

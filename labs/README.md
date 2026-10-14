@@ -51,3 +51,7 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 5. 다른 사람이 README만 보고 시작·조회·중지할 수 있는지 점검한다.
 
 Iceberg snapshot 만료나 orphan 파일 삭제는 복구 실습과 동시에 진행하지 않는다. Flink가 참조하는 메타데이터와 복구 지점의 관계를 확인한 뒤 별도 실습으로 다룬다.
+
+## 회차별 상세 자료
+
+- [1회차: 결제 한 건이 분석 지표가 되기까지](session01/README.md) — 강사용 120분 진행안, 학생 SQL 실습, 개인 설계서, 프로젝트 아키텍처와 맥미니 실행 순서.

@@ -1,4 +1,9 @@
 name: ${COMPOSE_PROJECT_NAME:-cdc-study}
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 x-aws: &aws
   AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-lab_minio}
   AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-lab_minio_password}
@@ -30,6 +35,7 @@ x-flink: &flink
     - flink-state:/opt/flink/state
 services:
   source-db:
+    logging: *logging
     image: postgres:17.6-alpine
     command: [postgres, -c, wal_level=logical, -c, max_replication_slots=10, -c, max_wal_senders=10]
     environment:
@@ -46,6 +52,7 @@ services:
       timeout: 3s
       retries: 30
   catalog-db:
+    logging: *logging
     image: postgres:17.6-alpine
     environment:
       POSTGRES_USER: catalog
@@ -58,6 +65,7 @@ services:
       timeout: 3s
       retries: 30
   kafka:
+    logging: *logging
     image: apache/kafka:3.9.1
     environment:
       KAFKA_NODE_ID: 1
@@ -82,6 +90,7 @@ services:
       timeout: 10s
       retries: 30
   connect:
+    logging: *logging
     image: quay.io/debezium/connect:3.2.4.Final
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
@@ -102,6 +111,7 @@ services:
       source-db: {condition: service_healthy}
     ports: ["127.0.0.1:28083:8083"]
   minio:
+    logging: *logging
     image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
     command: server /data --console-address :9001
     environment:
@@ -115,6 +125,7 @@ services:
       timeout: 3s
       retries: 30
   minio-init:
+    logging: *logging
     image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
     environment: *aws
     depends_on:
@@ -122,6 +133,7 @@ services:
     entrypoint: [/bin/sh, -c]
     command: ['mc alias set lab http://minio:9000 "$$AWS_ACCESS_KEY_ID" "$$AWS_SECRET_ACCESS_KEY" && mc mb --ignore-existing lab/warehouse']
   jobmanager:
+    logging: *logging
     <<: *flink
     command: jobmanager
     depends_on:
@@ -129,10 +141,12 @@ services:
       minio-init: {condition: service_completed_successfully}
     ports: ["127.0.0.1:28081:8081"]
   taskmanager:
+    logging: *logging
     <<: *flink
     command: taskmanager
     depends_on: [jobmanager]
   spark:
+    logging: *logging
     build:
       context: .
       dockerfile: docker/spark/Dockerfile
@@ -144,6 +158,7 @@ services:
       minio-init: {condition: service_completed_successfully}
     ports: ["127.0.0.1:24040:4040", "127.0.0.1:21000:10000"]
   runner:
+    logging: *logging
     build:
       context: .
       dockerfile: docker/runner/Dockerfile
@@ -157,6 +172,7 @@ services:
     volumes: [.:/workspace]
     depends_on: [spark, connect, jobmanager]
   airflow:
+    logging: *logging
     image: apache/airflow:2.10.5-python3.11
     profiles: [orchestration]
     command: standalone

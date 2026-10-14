@@ -11,7 +11,9 @@ Kafka와 Spark를 연결한 전체 흐름을 먼저 눈으로 확인한다. 100,
 - [강사용 실행 순서와 장애 대응](runbook.md)
 - [2026-10-14 리허설 결과](rehearsal.md)
 
-![1회차 프로젝트 아키텍처](diagrams/project-architecture.png)
+![데이터 흐름](../../docs/diagrams/01-data-flow.png)
+
+[저장·메타데이터 관계와 실행 환경](architecture.md)
 
 ## 끝날 때 남는 것
 

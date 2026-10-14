@@ -1,6 +1,18 @@
 # 1회차 프로젝트 아키텍처
 
-![프로젝트 아키텍처](diagrams/project-architecture.png)
+## 데이터 흐름
+
+![데이터 흐름](../../docs/diagrams/01-data-flow.png)
+
+## 저장·메타데이터 관계
+
+![저장·메타데이터 관계](../../docs/diagrams/02-storage-metadata.png)
+
+## 실행 환경
+
+![실행 환경](../../docs/diagrams/03-runtime.png)
+
+[그림 설명과 편집 가능한 draw.io 원본](../../docs/diagrams/README.md)
 
 ## 전체 데이터 흐름
 

@@ -32,7 +32,7 @@
 
 ## 00:10–00:25 — 전체 아키텍처
 
-[프로젝트 그림](diagrams/project-architecture.png)을 기준으로 세 번 설명한다.
+[세 장의 프로젝트 아키텍처](architecture.md)을 기준으로 세 번 설명한다.
 
 1. 데이터 경로: PostgreSQL → Debezium → Kafka → Flink → Iceberg Bronze → Spark SQL Silver → dbt Gold.
 2. 저장 내용: Bronze에는 변경 이력, Silver에는 최신 상태, Gold에는 정의한 집계 결과가 있다.

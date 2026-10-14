@@ -4,7 +4,9 @@
 
 [1회차 수업 자료](labs/session01/README.md) · [전체 아키텍처](docs/architecture.md) · [8회 실습](labs/README.md) · [개인 프로젝트 설계서](docs/project-template.md) · [운영 방법](docs/operations.md) · [검증 결과](docs/verification.md)
 
-![전체 아키텍처](docs/architecture.png)
+![데이터 흐름](docs/diagrams/01-data-flow.png)
+
+[저장·메타데이터 관계와 실행 환경 보기](docs/diagrams/README.md)
 
 ```text
 PostgreSQL → Debezium → Kafka → Flink → Iceberg Bronze

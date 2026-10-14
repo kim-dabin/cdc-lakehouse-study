@@ -1,5 +1,20 @@
 # 전체 아키텍처
 
+같은 프로젝트를 세 가지 관점으로 나눠 그렸다. [그림 설명과 편집 원본](diagrams/README.md)을 함께 제공한다.
+
+### 데이터 흐름
+
+![데이터 흐름](diagrams/01-data-flow.png)
+
+### 저장·메타데이터 관계
+
+![저장·메타데이터 관계](diagrams/02-storage-metadata.png)
+
+### 실행 환경
+
+![실행 환경](diagrams/03-runtime.png)
+
+
 ```mermaid
 flowchart TB
   author[강사·수강생 노트북<br/>Git · SQL · 코드 작성] --> github[GitHub<br/>실습 코드 · 개인 프로젝트]

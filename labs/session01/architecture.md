@@ -18,7 +18,7 @@
 
 ```mermaid
 flowchart TB
-  student[학생 노트북<br/>SQL · 개인 설계서 작성] --> submission[개인 제출물<br/>SQL · 지표 정의 · 원천 DDL]
+  student[학생 노트북<br/>SQL · 개인 설계서 작성] --> submission[개인 제출물<br/>SQL · 수집 검증 · 원천 명세]
   teacher[강사 노트북<br/>온라인 화면 공유] -. SSH .-> pg
   repo[GitHub<br/>실습 코드 · 가이드] -. 코드 배포 .-> pg
   subgraph mini[Mac mini · Lima Linux ARM64 · Docker Compose]
@@ -42,7 +42,7 @@ flowchart TB
   end
 ```
 
-1회차에는 미리 구성한 파이프라인에서 입력과 조회 결과를 연결한다. 새로운 SQL의 실행은 강사가 맡고, 학생은 예상값 계산·원천 SQL·개인 프로젝트 설계를 수행한다. Airflow 자동 갱신은 멈춰두고 변경 전후를 수동으로 비교한다.
+1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 기대 이벤트·원천 확인 SQL·개인 파이프라인 설계를 작성한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림의 금액은 전체 프로젝트의 후속 마트 예시다.
 
 ## 예제 원천 모델
 
@@ -69,41 +69,39 @@ erDiagram
   }
 ```
 
-주문 1건 : 결제 N건, 결제 1건 : 환불 N건이다. 오늘 시연은 결제·환불 각각 한 건으로 시작하되, 학생이 작성하는 집계 SQL은 여러 건도 중복 합산 없이 처리하도록 설계한다.
+주문 1건 : 결제 N건, 결제 1건 : 환불 N건이다. 오늘은 주문·결제를 준비한 뒤 같은 refund_id의 입력·정정·삭제를 관찰한다. 원천 행 수와 Bronze 이력 행 수를 구분한다.
 
-## 모델별 의미
+## 계층별 역할과 오늘의 범위
 
-| 모델 | 남기는 내용 | 오늘 확인하는 값 |
+| 계층 | 저장 내용 | 이번 회차 |
 |---|---|---|
-| Bronze `cdc_events` | before/after/op와 전달 위치를 가진 변경 이력 | 환불 입력 c, 금액 정정 u |
-| Silver `refunds` | 환불 키별 최신 금액·삭제 표시·원천 버전 | 같은 refund_id 한 행, amount=30000 |
-| Gold `fct_order_settlement` | 주문별 결제 성공액·환불 성공액·순결제액 | net_paid=70000 |
-| Gold `mart_daily_settlement` | 주문일별 주문 수와 금액 합계 | 다른 시연 데이터도 함께 합산되므로 별도 해석 필요 |
+| Bronze cdc_events | CDC 원문과 topic/partition/offset | c/u/d와 동일 수집 위치·내용 검증 |
+| Silver | 키별 최신 상태·삭제 표시·원천 버전 | 역할 설명, 구현·검증은 후속 회차 |
+| Gold | 활용 테이블과 테스트 | 역할 설명, 모델링은 후속 회차 |
 
-교실의 기대값 검증은 `fct_order_settlement`의 **이번 시연 order_id 한 건**으로 한다. 전체 일별 마트는 이전 리허설 주문까지 포함하므로 항상 70,000원이라고 가정하지 않는다.
-
-Flink는 Bronze에 추가 전용 이력을 저장한다. Silver의 현재 상태는 Spark SQL이 만들며, dbt는 Gold 모델을 Spark에서 실행하고 테스트한다. 객체 파일과 카탈로그 DB는 함께 테이블을 구성한다. 실시간 수집과 마트 갱신의 지연은 별도로 확인한다.
+Flink는 Bronze에 append 이력을 저장한다. 원천에서 삭제해도 c/u/d 이력은 남는다. Kafka null tombstone은 Flink 입력에서 제외하며 non-null op=d는 보관한다. source.lsn은 원천 버전 정보이고 Kafka 위치는 토픽·파티션·오프셋을 함께 사용한다.
 
 ## 개인 프로젝트 작성 틀
 
-아래 그림을 복사해 원천 테이블과 지표를 자신의 도메인에 맞게 바꾼다. 첫 회차에는 지표 하나와 테이블 2–3개로 범위를 잡는다.
+원천 테이블 2–3개와 변경 대상 키를 자신의 도메인으로 바꾼다. 목적지의 지표를 구체적으로 계산하는 작업은 후속 회차에서 진행한다.
 
 ```mermaid
 flowchart LR
-  source[PostgreSQL<br/>내 테이블 A / B / C] --> cdc[Debezium → Kafka]
-  cdc --> flink[Flink → Iceberg Bronze<br/>변경 이력]
-  flink --> silver[Spark SQL → Iceberg Silver<br/>내 키별 현재 상태]
-  silver --> gold[dbt → Iceberg Gold<br/>내 지표 하나]
-  gold --> check[예상값 비교<br/>입력 / 수정 / 삭제]
+  source[PostgreSQL<br/>내 테이블 A / B / C] --> cdc[Debezium / Kafka Connect<br/>publication · include list]
+  cdc --> kafka[Kafka<br/>테이블별 토픽 · 이벤트 key]
+  kafka --> flink[Flink<br/>원문 · 수집 위치]
+  flink --> bronze[Iceberg Bronze<br/>변경 이력]
+  bronze -. 이후 회차 .-> downstream[Spark Silver / dbt Gold<br/>최신 상태 · 활용 테이블]
 ```
 
-그림 아래에는 다음을 적는다.
+그림 아래에 다음을 적는다.
 
-- 지표를 볼 사용자와 의사결정.
-- 집계 단위·계산식·기준 날짜·시간대.
-- 각 테이블에서 한 행의 의미와 PK/FK.
-- 어떤 수정·삭제가 어떤 지표를 바꾸는가.
-- 원천 변경부터 Gold까지 허용하는 지연과 이유.
-- 아직 구현하지 않은 설정과 다음 회차에 확인할 부분.
+- 수집 목적과 포함·제외할 원천 데이터.
+- 테이블 한 행의 의미, PK/FK, 수정·삭제 방식.
+- publication / connector 수집 대상 / Flink 토픽 패턴 연결 계획.
+- Bronze에 보관할 원문과 위치·원천 버전 정보.
+- 원천 변경부터 Bronze 조회까지 목표 지연과 이력 보존 계획.
+- INSERT·UPDATE·DELETE의 기대 이벤트와 대조 방법.
+- Kafka에 있는데 Bronze에 없을 때 조사 순서.
 
-예약·물류·구독 등 각자의 주제를 선택한다. 이번 주문 예제의 SQL을 실행해 본 경험을 자신의 데이터 모델에 적용하는 것이 개인 프로젝트의 출발점이다.
+예약·물류·구독 등 각자 주제를 선택한다. 설정 미확정 항목은 다음 회차의 질문으로 남긴다.

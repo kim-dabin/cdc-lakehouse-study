@@ -1,37 +1,43 @@
--- 1회차 학생 작성 파일. 이 파일은 제출물이며 자동 실행되지 않습니다.
--- 강사가 승인한 실습 SQL만 맥미니에 반영합니다.
+-- 1회차: 학생은 로컬에서 작성합니다. 강사가 검토한 SQL만 맥미니에서 실행합니다.
+-- 이름 / 학생 ID:
 
--- [A] 예제의 키와 금액을 바꾸고 예상 순결제액을 적으세요.
--- 내 이름/학생 ID:
--- 변경 조건:
--- 결제 직후 기대값:
--- 환불 직후 기대값:
--- 환불 정정 후 기대값:
-
+-- [A] FK를 맞추고 같은 환불 PK에 입력·수정·삭제를 작성합니다.
+-- 단계마다 원천 SELECT와 Kafka·Bronze의 기대 이벤트를 submission.md에 적으세요.
 BEGIN;
 INSERT INTO orders (order_id, ordered_at, status)
-VALUES ('my-order-01', '2026-10-19T10:00:00+09:00', 'confirmed');
+VALUES ('my-o1', '2026-10-19T10:00:00+09:00', 'confirmed');
 INSERT INTO payments (payment_id, order_id, amount, status)
-VALUES ('my-payment-01', 'my-order-01', 100000, 'success');
+VALUES ('my-p1', 'my-o1', 100000, 'success');
 COMMIT;
 
 INSERT INTO refunds (refund_id, payment_id, amount, status)
-VALUES ('my-refund-01', 'my-payment-01', 20000, 'success');
+VALUES ('my-r1', 'my-p1', 20000, 'success');
+SELECT refund_id, payment_id, amount, status
+FROM refunds WHERE refund_id = 'my-r1';
 
-UPDATE refunds SET amount = 30000 WHERE refund_id = 'my-refund-01';
+UPDATE refunds SET amount = 30000 WHERE refund_id = 'my-r1';
+-- TODO: 동일 PK의 현재 값을 확인하는 SELECT
 
--- [B] 원천 데이터만으로 내 주문의 순결제액을 계산하세요.
--- 결제와 환불을 각각 집계한 뒤 연결합니다. 결제가 여러 건일 수 있습니다.
--- TODO: SELECT ...
+DELETE FROM refunds WHERE refund_id = 'my-r1';
+-- TODO: 삭제 후 해당 PK가 0행임을 확인하는 SELECT
 
--- [C] 내 프로젝트에서 수정이 발생하는 테이블 하나를 설계하세요.
--- 한 행의 의미:
--- PK:
--- 수정 가능한 컬럼:
--- 관련 테이블과의 관계:
--- TODO: CREATE TABLE ... (PRIMARY KEY 포함, FK 또는 관계 설명 포함)
+-- [B] Kafka CDC 이벤트의 기대값을 기록합니다.
+-- INSERT: key / op / before / after:
+-- UPDATE: key / op / before / after:
+-- DELETE: key / op / before / after:
+-- Kafka와 Bronze를 연결하는 수집 위치:
 
--- [D] 입력, 수정, 삭제의 DML을 각각 한 개 작성하고 지표의 기대값을 적으세요.
+-- [C] 개인 프로젝트의 원천 테이블 하나를 설계합니다.
+-- 테이블명 / 한 행의 의미:
+-- PK / FK 또는 관련 테이블:
+-- 수정 가능한 컬럼 / 물리 삭제 또는 논리 삭제:
+-- TODO: CREATE TABLE ... (PRIMARY KEY 포함)
+
+-- [D] 내 테이블의 변경 테스트와 원천 확인 SQL
 -- TODO: INSERT ...
--- TODO: UPDATE ... WHERE ...
--- TODO: DELETE ... WHERE ...
+-- TODO: SELECT ... WHERE PK = ...
+-- TODO: UPDATE ... WHERE PK = ...
+-- TODO: SELECT ... WHERE PK = ...
+-- TODO: DELETE ... WHERE PK = ...
+-- TODO: SELECT ... WHERE PK = ...
+-- 각 DML의 기대 key·op·before/after와 Bronze 검증 계획은 submission.md에 적습니다.

@@ -1,210 +1,152 @@
-# 1회차 실습 가이드 — 결제 한 건이 분석 지표가 되기까지
+# 1회차 실습 가이드 — 변경 데이터 수집과 파이프라인 설계
 
-오늘은 강사가 맥미니에서 파이프라인을 실행하고, 여러분은 자기 노트북에서 SQL과 프로젝트 설계서를 작성합니다. 화면의 결과를 보기 전에 기대값부터 계산하고, 실제 결과와 비교해 기록하세요.
+이번 회차에서는 원천 DB의 한 행이 바뀔 때 Kafka에 어떤 메시지가 생기고, 그 메시지가 Iceberg에 어떻게 남는지 확인합니다. 변경을 식별하는 키, 수집 범위, 이력 저장 방식을 정해 개인 프로젝트의 파이프라인 초안을 작성합니다.
 
-## 준비물과 수업 결과
+강사는 맥미니에서 미리 구성한 환경을 실행하고 화면을 공유합니다. 학생은 자기 노트북에서 SQL과 설계서를 작성합니다. 서버 접속이나 Docker·Flink 설치는 이번 실습에 포함하지 않습니다. Kafka·Spark 등 정규 과정에서 배운 내용을 바탕으로 진행합니다.
 
-GitHub 계정, Git, SQL을 작성할 편집기, 온라인 수업 접속 환경을 준비합니다. 서버 접속 정보와 AWS 키는 필요하지 않습니다. 저장소는 비공개이므로 강사가 읽기 권한이나 자료 파일을 제공해야 합니다.
+## 준비할 파일
 
-수업이 끝나면 다음 파일을 남깁니다.
+[GitHub 실습 폴더](https://github.com/kim-dabin/cdc-lakehouse-study/tree/main/labs/session01)에서 아래 두 파일을 개인 폴더로 복사합니다. 비공개 저장소 접근 권한이 없다면 강사가 제공한 동일 파일을 사용합니다.
 
-- `student-worksheet.sql`: 예제 SQL, 원천 집계 쿼리, 내 테이블 DDL과 변경 DML.
-- `submission.md`: 관찰표, 개인 프로젝트 설계, 다음 회차까지 할 일.
+- [student-worksheet.sql](sql/student-worksheet.sql): DML, 원천 조회 SQL, 개인 DDL 작성.
+- [submission-template.md](submission-template.md): `submission.md`로 저장해 수집 검증과 설계 기록.
 
-## 1. 자료 가져오기
+SQL은 텍스트 편집기나 IDE에서 작성하면 됩니다. 학생 파일을 서버에서 자동 실행하지 않습니다. 강사가 답안을 검토하고 전용 시연 SQL을 실행합니다. 파일의 테스트 날짜는 실제 강의 일정과 관계없습니다.
 
-**내 노트북 터미널에서 실행합니다.** 읽기 권한을 받은 계정으로 로그인한 뒤 내려받으세요. `gh`를 사용할 경우 `gh auth login`으로 본인 계정을 연결합니다.
+## 120분 진행 순서
 
-```bash
-git clone https://github.com/kim-dabin/cdc-lakehouse-study.git
-cd cdc-lakehouse-study
-mkdir -p ../session01-work
-cp labs/session01/sql/student-worksheet.sql ../session01-work/student-worksheet.sql
-cp labs/session01/submission-template.md ../session01-work/submission.md
-```
-
-이미 저장소가 있고 수정한 파일이 없다면 `git pull --ff-only`로 자료를 갱신합니다. GitHub 접근이 안 되면 강사가 제공한 두 템플릿을 편집기에 열어 진행합니다. 수업 중 계정 문제로 실습을 멈출 필요는 없습니다.
-
-앞으로 실행 결과는 강사 화면에서 확인합니다. `lab.sh`는 강사가 맥미니에서 사용하는 파일입니다. 여러분은 `session01-work`의 두 파일을 작성하세요.
-
-## 2. 파이프라인의 세 계층 구분하기 — 10~25분
-
-[프로젝트 아키텍처](architecture.md)를 보며 빈칸을 채웁니다.
-
-| 위치 | 남는 데이터 | 내 설명 |
+| 경과 시간 | 진행 | 학생이 할 일 |
 |---|---|---|
-| PostgreSQL | 서비스 원천 테이블 | |
-| Kafka | 변경 이벤트 | |
-| Iceberg Bronze | 변경 원문과 전달 위치 | |
-| Iceberg Silver | 키별 현재 상태와 삭제 표시 | |
-| Iceberg Gold | 분석에 사용할 지표 | |
+| 00:00–00:10 | 프로젝트 목표와 수집 요구사항 | 어떤 변경을 수집할지, 성공 근거 작성 |
+| 00:10–00:30 | 아키텍처 세 장과 구성 요소별 책임 | 수집 경로와 저장소·실행 환경 구분 |
+| 00:30–00:45 | 원천 모델과 변경 시나리오 | PK/FK, 원천 조회, INSERT·UPDATE·DELETE 작성 |
+| 00:45–01:10 | 세 변경의 Kafka·Bronze 기록 관찰 | 키, op, before/after, 수집 위치 대조 |
+| 01:10–01:15 | 휴식 | |
+| 01:15–01:30 | 수집 검증과 지연 확인 | 누락·중복 판단과 조사할 구간 작성 |
+| 01:30–01:55 | 개인 파이프라인 설계 | 명세, 경로, DDL 하나, 검증 시나리오 |
+| 01:55–02:00 | 점검과 제출 | SQL·설계 초안 제출 |
 
-질문: 환불 금액을 20,000원에서 30,000원으로 수정하면, 예전 20,000원 기록은 어느 계층에 남고 최신 30,000원은 어느 계층에서 읽을까요?
+## 1. 전체 경로와 각자의 책임
 
-**기록 방법:** `submission.md`의 ‘전체 흐름’에 자기 말로 한 문장씩 씁니다. 오늘은 Flink 설정을 외우는 것이 아니라 데이터가 각 계층에서 어떤 의미를 갖는지 설명하면 됩니다.
+[아키텍처 세 장](architecture.md)을 보며 설계서의 역할 표를 채웁니다.
 
-## 3. 원천 테이블과 지표 읽기 — 25~35분
+- PostgreSQL: 원천 테이블과 커밋된 변경.
+- Debezium/Kafka Connect: 초기 스냅샷과 WAL 기반 변경 이벤트 전달.
+- Kafka: 테이블별 이벤트를 토픽·파티션·오프셋으로 기록.
+- Flink: Kafka의 CDC 원문과 수집 위치를 Iceberg Bronze에 적재.
+- Iceberg Bronze: 입력·수정·삭제 이벤트의 이력 보관.
+- Spark SQL Silver: 이후 회차에서 키별 현재 상태와 삭제 표시 구성.
+- dbt·Spark Gold: 이후 회차에서 활용할 테이블과 테스트 구성.
 
-예제의 관계는 `orders → payments → refunds`입니다. 주문 하나에 결제 여러 건, 결제 하나에 환불 여러 건이 발생할 수 있습니다.
+MinIO는 실제 파일을 저장하고, 별도 PostgreSQL의 Iceberg JDBC Catalog는 테이블의 metadata 파일 위치 등을 관리합니다. Flink checkpoint/savepoint는 별도 상태 볼륨에 남습니다. 오늘 Airflow는 멈춰두며 Silver·Gold 갱신을 수집 성공의 기준으로 사용하지 않습니다.
 
-| 테이블 | 한 행의 의미 | PK | 연결하는 키 |
-|---|---|---|---|
-| orders | 주문 한 건 | order_id | — |
-| payments | 결제 한 건 | payment_id | order_id |
-| refunds | 환불 한 건 | refund_id | payment_id |
+## 2. 같은 행에 세 가지 변경 만들기
 
-지표 정의는 **주문일 기준 순결제액 = 결제 성공액 합계 − 환불 성공액 합계**입니다. 주문일은 Asia/Seoul 기준입니다. 결제 상태와 환불 상태가 `success`인 행을 집계합니다.
-
-다음 두 가지를 답하세요.
-
-1. 같은 결제에 환불이 두 번 발생하면 두 환불은 어떻게 구분하나요?
-2. 환불 금액을 정정할 때 어떤 키로 기존 행을 찾아야 하나요?
-
-## 4. 변경 SQL과 기대값 작성하기 — 35~50분
-
-`student-worksheet.sql`의 A 부분을 수정합니다.
-
-1. `my-order-01`, `my-payment-01`, `my-refund-01`에 자기 이름 또는 학생 ID를 붙입니다. FK가 가리키는 값도 함께 바꿉니다.
-2. 결제 금액을 100,000원으로 둡니다.
-3. 환불 20,000원을 입력한 뒤 같은 환불을 30,000원으로 수정하는 SQL을 읽습니다.
-4. 세 단계의 순결제액을 SQL 주석과 기록지에 먼저 씁니다.
+예제의 `orders → payments → refunds` 관계를 확인합니다. `refund_id`는 환불 한 건의 PK이고 `payment_id`는 어떤 결제를 환불하는지 가리킵니다. 환불 한 행에 아래 순서를 적용합니다.
 
 ```sql
--- 결제 직후: 100000
--- 환불 입력 후: 80000
--- 같은 환불을 30000으로 정정한 후: 70000
+INSERT INTO refunds (refund_id, payment_id, amount, status)
+VALUES ('my-r1', 'my-p1', 20000, 'success');
+
+SELECT refund_id, payment_id, amount, status
+FROM refunds WHERE refund_id = 'my-r1';
+
+UPDATE refunds SET amount = 30000 WHERE refund_id = 'my-r1';
+
+DELETE FROM refunds WHERE refund_id = 'my-r1';
 ```
 
-첫 INSERT와 두 번째 UPDATE가 같은 `refund_id`를 가리키는지 확인하세요. 금액 정정에 새 환불 INSERT를 쓰면 환불 두 건이 됩니다.
+실행 전 주문과 결제 행이 필요합니다. 학생 SQL 파일의 준비 INSERT를 먼저 읽고 FK가 일치하도록 자기 키로 바꿉니다. 위 SQL은 학생 작성 예시이며 강사 화면에서는 매번 새로운 CASE_ID를 사용합니다. 각 단계 직후 원천 SELECT의 기대 결과를 먼저 적습니다.
 
-강사는 검토한 SQL 또는 같은 의미의 강사용 예제를 실행합니다. 강사용 `:'namespace'`는 psql 변수이며 학생별·리허설별 데이터가 섞이지 않게 키를 붙이는 용도입니다. 여러분의 제출 SQL은 템플릿처럼 일반 SQL 문자열로 작성해도 됩니다.
-
-## 5. 결제와 환불이 어디까지 반영됐는지 관찰하기 — 50~65분
-
-강사가 다음 순서로 실행합니다.
-
-1. PostgreSQL에 주문과 결제를 입력합니다.
-2. Bronze에서 결제 이벤트를 조회합니다.
-3. Spark SQL·dbt를 실행해 Silver와 Gold를 갱신합니다.
-4. 환불을 입력하고, **Gold를 갱신하기 전** 원천과 Gold를 비교합니다.
-5. Bronze에서 환불 이벤트를 확인한 뒤 Gold를 갱신합니다.
-
-아래 표를 기록지에 채웁니다. 조회가 아직 안 되는 경우에도 기대값을 바꾸지 말고 ‘아직 미반영’으로 적으세요.
-
-| 단계 | 원천의 순결제액 | Bronze에서 본 변화 | Silver/Gold 실제값 | 설명 |
-|---|---:|---|---|---|
-| 결제 입력 후, 첫 갱신 완료 | 100,000 | 결제 c 이벤트 | | |
-| 환불 입력 후, 마트 갱신 전 | 80,000 | 환불 c 이벤트 | | |
-| 환불 후 마트 갱신 완료 | 80,000 | 기존 이력 유지 | | |
-| 환불 30,000원 정정 후 갱신 완료 | 70,000 | 환불 u 이벤트 | | |
-
-이 수업에서는 자동 마트 실행을 멈춰두고 단계별로 수동 갱신합니다. 실제 정기 실행에서는 스케줄을 기다리는 시간이 추가됩니다. Bronze에서 보이는 시점과 Gold가 바뀌는 시점을 구분해 관찰하세요.
-
-`kafka_offset`은 토픽·파티션 안에서의 전달 위치입니다. 여러 토픽의 offset 숫자를 비교해 전체 데이터의 시간 순서를 판단하지 않습니다. `ingested_at`은 적재 과정의 시각이고, SQL에서 처음 조회된 시각과는 다를 수 있습니다.
-
-## 6. 원천 SQL로 같은 금액 계산하기 — 관찰 중 병행
-
-`student-worksheet.sql`의 B 부분에 원천의 결제와 환불만 사용한 SELECT를 작성하세요.
-
-- 내 `order_id` 한 건만 조회합니다.
-- `status = 'success'`인 금액을 집계합니다.
-- 환불이 없으면 0원으로 계산합니다.
-- 결제와 환불을 각각 집계한 뒤 주문에 연결합니다.
-
-힌트:
-
-```sql
-WITH paid AS (
-  -- 주문별 결제 성공액
-), refunded AS (
-  -- 주문별 환불 성공액
-)
-SELECT ...
-FROM orders o
-LEFT JOIN paid p ON ...
-LEFT JOIN refunded r ON ...
-WHERE o.order_id = '내 주문 ID';
-```
-
-결제와 환불을 바로 JOIN한 결과에 `sum(payment.amount)`를 적용하면, 환불이 여러 건일 때 같은 결제 금액이 반복될 수 있습니다. 1회차에서는 이 문제를 피하는 집계 구조를 작성합니다. [강사용 답안](sql/expected-source-query.sql)은 먼저 작성해본 뒤 비교하세요.
-
-## 7. 환불 정정 관찰하기 — 70~85분
-
-같은 환불을 20,000원에서 30,000원으로 바꾸는 UPDATE를 작성합니다. 강사 화면에서 다음을 확인하세요.
-
-- Bronze에 INSERT 이벤트와 UPDATE 이벤트가 함께 남아 있는가?
-- UPDATE의 `before.amount`와 `after.amount`가 각각 20,000원, 30,000원인가?
-- Silver에는 같은 환불 키의 현재 금액 30,000원이 남는가?
-- Gold의 순결제액은 70,000원인가?
-
-답변: “변경 이력은 ___에 여러 건 남고, 현재 상태는 ___에 키별로 남습니다.”
-
-## 8. 내 프로젝트 설계하기 — 85~110분
-
-도메인은 직접 선택합니다. 아래 예시는 범위를 잡기 위한 참고입니다.
-
-| 예시 | 처음 만들 지표 | 지표를 바꾸는 변경 |
+| 변경 | 원천 조회의 기대 결과 | CDC 기대값 |
 |---|---|---|
-| 예약 | 날짜별 유효 예약 건수 | 예약 취소·이용일 변경 |
-| 물류 | 센터별 출고 대기 건수 | 출고 완료·배송 상태 정정 |
-| 구독 | 요금제별 활성 구독 건수 | 구독 해지·재활성화 |
-| 결제 | 주문일 기준 순결제액 | 환불·환불 금액 정정 |
+| INSERT | 같은 PK 한 행, amount=20000 | op=c, before=null, after.amount=20000 |
+| UPDATE | 같은 PK 한 행, amount=30000 | op=u, before.amount=20000, after.amount=30000 |
+| DELETE | 해당 PK 조회 결과 0행 | op=d, before.amount=30000, after=null |
 
-`submission.md`에 다음을 작성합니다.
+예제 원천은 `REPLICA IDENTITY FULL`을 설정해 수정·삭제 이전의 컬럼 값을 관찰합니다. 다른 설정에서는 before에 제공하는 필드가 달라질 수 있습니다. DELETE는 원천 행을 지우지만 Bronze에 쌓인 c/u/d 이력을 지우지 않습니다.
 
-1. **사용자와 판단:** 누가 어떤 결정을 위해 이 지표를 보나요?
-2. **지표 하나:** 계산식, 집계 단위, 기준 날짜·시간대, 포함/제외 상태를 정합니다.
-3. **허용 지연:** 원천 변경 후 몇 분 이내에 Gold에서 확인해야 하나요? 그 이유를 적습니다.
-4. **원천 테이블 2–3개:** 테이블마다 한 행의 의미, PK/FK와 변경 가능한 컬럼을 적습니다.
-5. **DDL 하나:** 수정이 발생하는 테이블 하나를 `CREATE TABLE`로 작성합니다.
-6. **변경 사례:** 신규 입력·수정·삭제가 지표에 어떤 영향을 주는지 숫자로 적습니다.
+## 3. 강사 화면에서 Kafka와 Bronze 대조
 
-예: “예약 R1이 유효 상태라 유효 예약 수가 1건이다. 취소하면 0건이어야 한다. 예약 원문 이벤트는 Bronze에 남고, Silver의 상태는 cancelled가 된다.”
+각 단계마다 **원천 SELECT → Kafka 메시지 → Bronze 조회** 순서로 봅니다. 갱신을 기다리는 동안 아래 표의 예상값과 실제값을 구분해 기록합니다.
 
-공개 데이터가 정적인 경우에도 PostgreSQL에 적재한 뒤, 어떤 서비스 변경을 모의로 발생시킬지 직접 정의합니다. 실제 서비스 데이터처럼 수정·삭제가 일어나는 구조를 설계하는 것이 목표입니다.
+| 단계 | 원천 행 수·금액 | Kafka key·op·before/after | Kafka 토픽·파티션·오프셋 | 동일 위치의 Bronze 값 | 판정·근거 |
+|---|---|---|---|---|---|
+| INSERT | | | | | |
+| UPDATE | | | | | |
+| DELETE | | | | | |
 
-## 9. 제출과 다음 회차 준비 — 110~120분
+확인할 내용:
 
-수업 종료 시 SQL 파일과 설계서 초안을 강사가 지정한 제출 경로에 올립니다. 개인 GitHub 저장소를 사용하는 경우 해당 파일 또는 커밋 링크를 제출합니다. 같은 공유 코드 저장소에 모두 직접 push하지 않습니다.
+1. Kafka key의 refund_id와 원천 PK가 같은가?
+2. c/u/d와 before/after가 실제 변경에 맞는가?
+3. Kafka와 Bronze의 **(topic, partition, offset)**이 같은가?
+4. 동일 위치의 이벤트 내용과 source.lsn이 같은가?
+5. 원천에서 삭제한 뒤에도 Bronze에 c/u/d 이력이 남는가?
 
-종료 전 확인:
+새 CASE_ID의 환불만 필터링합니다. 예제에서는 Kafka의 non-null CDC 이벤트가 c/u/d 세 개이며 Bronze에도 해당 위치의 세 기록을 기대합니다. 작업 재시도나 동일 이벤트 재전달이 있다면 개수만 맞추지 말고 어떤 위치와 내용이 반복됐는지 적습니다.
 
-- 예상 100,000 / 80,000 / 70,000원과 화면의 실제값을 비교했다.
-- 원천 변경이 바로 Gold 갱신을 의미하지 않는 이유를 설명했다.
-- 프로젝트 지표 하나와 그 지표를 바꾸는 수정/삭제 사례를 정했다.
-- PK가 있는 DDL 하나를 작성했다.
+Kafka offset은 파티션 안에서 비교합니다. 다른 파티션이나 토픽 사이의 전체 순서를 뜻하지 않습니다. source.lsn은 원천 변경 위치이며 단독으로 모든 이벤트의 고유 ID라고 가정하지 않습니다.
 
-**다음 회차까지:** 나머지 원천 테이블 DDL, INSERT/UPDATE/DELETE 각 한 개, 각 변경의 기대값을 완성합니다. 아직 개인 파이프라인 전체를 설치할 필요는 없습니다. 2회차에 CDC 원문을 읽으며 설계를 이어갑니다.
+삭제 뒤 같은 key에 value=null인 **tombstone**이 보일 수 있습니다. 이 파이프라인은 non-null `op=d` 이벤트를 Bronze에 보관하고 null tombstone은 걸러냅니다. 그래서 Kafka 전체 메시지 수와 Bronze 행 수가 반드시 같지는 않습니다. 비교 대상은 non-null CDC 이벤트입니다.
 
-## 막혔을 때
+## 4. 수집 지연과 이상 징후 판단
 
-| 상황 | 지금 할 일 |
+원천 변경 시각, Kafka 확인 시각, Bronze 첫 조회 시각을 기록합니다. 화면에서 `wait_observed_seconds`가 나오면 **대기 명령을 시작한 뒤 Bronze에서 처음 관찰할 때까지의 시간**으로 적습니다. 원천 커밋부터의 정확한 지연과는 다릅니다.
+
+Bronze의 `kafka_ts`는 Kafka record 시각, `ingested_at`은 Flink 처리 시각입니다. `ingested_at - kafka_ts`만으로 Iceberg commit 후 조회 가능 시점까지의 전체 지연을 계산하지 않습니다. 정밀 계측은 이후 회차에서 같은 기준 시계와 commit 시점 기록을 추가합니다.
+
+| 관찰한 상태 | 먼저 확인할 구간 |
 |---|---|
-| GitHub 권한 없음 | 강사 제공 템플릿으로 계속 작성하고 접근 문제는 수업 후 확인 |
-| 예상 금액이 다름 | 환불이 새 행인지 기존 행 수정인지, success 조건과 JOIN 중복 확인 |
-| 원천과 Gold가 다름 | 마트 갱신 전인지 확인하고 관찰표에 차이를 기록 |
-| 실시간 조회가 늦음 | 강사가 Bronze 확인 중인지, Spark/dbt 갱신 중인지 구분 |
-| 도메인이 너무 큼 | 테이블 2–3개와 지표 하나로 줄이고 나머지는 확장 목록에 기록 |
+| 원천은 바뀌었는데 Kafka 메시지가 없음 | 원천 커밋, publication·수집 대상, connector 상태 |
+| Kafka에는 있는데 Bronze에서 안 보임 | 토픽 패턴, Flink 소비·처리, checkpoint와 sink commit, Catalog·저장소 접근 |
+| 같은 PK의 이벤트가 여러 개 있음 | 정상 c/u/d 이력인지, 동일 위치 중복인지, 다른 위치의 재전달인지 구분 |
+| Bronze에는 있으나 Silver·Gold가 과거 값 | 후속 변환·갱신 여부를 확인. 오늘 수집 검증과 별도 |
 
-## 설계 참고 — 예약 프로젝트를 선택한 경우
+Flink 작업이 RUNNING이라는 사실과 이벤트가 실제 저장됐다는 사실을 구분합니다. 오늘 한 키의 세 변경을 확인한 결과만으로 모든 데이터의 무누락, 장애 복구, exactly-once를 보장했다고 쓰지 않습니다.
 
-그대로 제출하기보다는 자신의 서비스 상황에 맞게 상태와 시간 기준을 바꾸세요.
+## 5. 개인 프로젝트의 파이프라인 설계
 
-```sql
-CREATE TABLE reservations (
-  reservation_id text PRIMARY KEY,
-  customer_id text NOT NULL,
-  service_at timestamptz NOT NULL,
-  status text NOT NULL CHECK (status IN ('confirmed', 'cancelled'))
-);
+예약, 물류, 구독 등 각자 도메인을 고릅니다. 아래 순서로 25분 동안 작성합니다.
 
-INSERT INTO reservations VALUES
-  ('r-001', 'c-001', '2026-10-20T14:00:00+09:00', 'confirmed');
+### 처음 5분: 수집 목적과 범위
 
-UPDATE reservations SET status = 'cancelled'
-WHERE reservation_id = 'r-001';
-```
+- 데이터 소비자가 이 데이터를 어디에 쓸지 한 문장.
+- 원천 테이블 2–3개와 포함·제외할 데이터.
+- 원천 변경부터 Bronze 조회까지 목표 지연과 이유.
+- 원천을 얼마나 오래 보관하며 이력 보존이 왜 필요한지.
 
-지표를 ‘이용일별 유효 예약 수’로 정했다면 `confirmed`는 포함하고 `cancelled`는 제외합니다. 이 행만 있는 상황에서 지표는 1 → 0으로 바뀝니다. `service_at`이 다른 날짜로 바뀌면 이전 이용일은 감소하고 새 이용일은 증가해야 합니다.
+예: 예약 변경 이력을 추적하고 취소 상태를 최신화한다. reservations·customers를 수집하고 개인정보 컬럼의 포함 여부를 적는다. 전체 고객 서비스를 한 번에 설계하지 않습니다.
 
-이 DDL은 개인 프로젝트의 설계 예시입니다. 강사 참고 파이프라인은 현재 orders/payments/refunds만 CDC 수집하도록 설정되어 있습니다. 새 테이블을 생성하는 것만으로 자동 수집되지 않으며, 개인 원천 모델에 맞춘 publication·커넥터·모델 설정은 이후 회차에서 함께 적용합니다.
+### 다음 8분: 원천 명세와 경로
+
+| 테이블 | 한 행의 의미 | PK/FK | 수정·삭제 컬럼 | 예상 토픽 | Bronze에 남길 정보 |
+|---|---|---|---|---|---|
+| | | | | | |
+| | | | | | |
+| | | | | | |
+
+원천, connector, Kafka, Flink, Bronze를 연결하고 각 단계의 입력·출력을 적습니다. 저장소·Catalog·복구 상태 위치는 데이터 경로와 구분합니다. 예제 테이블 이름을 자기 도메인으로 바꿔 [설계 틀](architecture.md#개인-프로젝트-작성-틀)을 사용합니다.
+
+새 테이블은 DDL만 작성하면 자동 수집되지 않습니다. publication, connector include list, Flink 토픽 패턴과 권한을 맞춰야 합니다. 1회차에서는 이 연결 계획을 적고 설정은 다음 회차에서 확인합니다.
+
+### 다음 7분: DDL 하나와 변경 테스트
+
+수정 가능한 테이블 하나의 DDL과 INSERT·UPDATE·DELETE를 작성합니다. 각 단계에서 기대하는 원천 행, Kafka key/op, Bronze 이력을 적습니다. 테이블 한 행의 PK를 바꾸지 않고 내용이 변하는 시나리오부터 설계합니다.
+
+### 마지막 5분: 검증과 장애 조사 계획
+
+- 어떤 key와 수집 위치로 누락을 찾을까?
+- 같은 이벤트를 다시 처리하면 어떻게 식별할까?
+- DELETE와 논리 삭제(status 변경)를 어떻게 구분할까?
+- Kafka에 있는데 Bronze에 없으면 어느 구간부터 확인할까?
+
+재처리 구현과 복구 실험은 이후 회차에서 수행합니다. 지금은 판단 기준과 필요한 기록을 설계서에 남깁니다.
+
+## 제출과 다음 회차
+
+오늘은 `student-worksheet.sql`과 `submission.md`를 강사가 안내한 채널에 제출합니다. 완료 기준은 c/u/d의 원천·Kafka·Bronze 대조 기록, 원천 명세, 개인 파이프라인 초안과 DDL 하나입니다.
+
+다음 회차 전 나머지 DDL과 DML, 기대 이벤트 표를 완성합니다. 미확정 설정은 추정값으로 확정하지 않고 질문으로 남깁니다. 8회까지가 스터디이며 프로젝트 발표는 별도 일정입니다.
+
+참고: [Debezium PostgreSQL 이벤트·replica identity·tombstone 문서](https://debezium.io/documentation/reference/stable/connectors/postgresql.html#postgresql-events).

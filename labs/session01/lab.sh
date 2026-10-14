@@ -18,9 +18,11 @@ case "$action" in
   source-answer) file=expected-source-query.sql ;;
   refresh)
     exec ./scripts/lab.sh exec -T runner python scripts/pipeline.py ;;
+  kafka|source-rows|collect-check)
+    exec ./scripts/lab.sh exec -T runner python labs/session01/collection.py "$namespace" "$action" "$@" ;;
   bronze|layers|wait|check)
     exec ./scripts/lab.sh exec -T runner python labs/session01/observe.py "$namespace" "$action" "$@" ;;
-  *) echo 'Actions: payment refund correction delete source source-answer bronze layers wait refresh check' >&2; exit 2 ;;
+  *) echo 'Actions: payment refund correction delete source source-answer source-rows kafka collect-check bronze layers wait refresh check' >&2; exit 2 ;;
 esac
 ./scripts/lab.sh exec -T source-db psql -X -v ON_ERROR_STOP=1 -U source -d app \
   -v "namespace=$namespace" < "labs/session01/sql/$file"

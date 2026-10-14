@@ -1,0 +1,174 @@
+{
+  "namespace": "s01-de-rehearsal-20261015a",
+  "stage": "delete",
+  "source_rows": [],
+  "kafka_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 14,
+      "key": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1"
+      },
+      "tombstone": false,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26848744,
+      "source_ts_ms": 1791997417472,
+      "connector_ts_ms": 1791997417662
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 15,
+      "key": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1"
+      },
+      "tombstone": false,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26850264,
+      "source_ts_ms": 1791997740581,
+      "connector_ts_ms": 1791997740707
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 16,
+      "key": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1"
+      },
+      "tombstone": false,
+      "op": "d",
+      "before": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "after": null,
+      "source_lsn": 26851416,
+      "source_ts_ms": 1791997750151,
+      "connector_ts_ms": 1791997750620
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 17,
+      "key": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1"
+      },
+      "tombstone": true,
+      "op": null
+    }
+  ],
+  "bronze_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 14,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26848744,
+      "source_ts_ms": 1791997417472,
+      "connector_ts_ms": 1791997417662,
+      "kafka_ts": "2026-10-14 17:03:37.775000",
+      "ingested_at": "2026-10-14 17:03:37.786000"
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 15,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26850264,
+      "source_ts_ms": 1791997740581,
+      "connector_ts_ms": 1791997740707,
+      "kafka_ts": "2026-10-14 17:09:00.992000",
+      "ingested_at": "2026-10-14 17:09:01"
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 16,
+      "op": "d",
+      "before": {
+        "refund_id": "s01-de-rehearsal-20261015a-r1",
+        "payment_id": "s01-de-rehearsal-20261015a-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "after": null,
+      "source_lsn": 26851416,
+      "source_ts_ms": 1791997750151,
+      "connector_ts_ms": 1791997750620,
+      "kafka_ts": "2026-10-14 17:09:11.013000",
+      "ingested_at": "2026-10-14 17:09:11.022000"
+    }
+  ],
+  "checks": [
+    {
+      "op": "c",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        14
+      ],
+      "bronze_copies": 1
+    },
+    {
+      "op": "u",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        15
+      ],
+      "bronze_copies": 1
+    },
+    {
+      "op": "d",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        16
+      ],
+      "bronze_copies": 1
+    }
+  ],
+  "passed": true,
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee"
+}

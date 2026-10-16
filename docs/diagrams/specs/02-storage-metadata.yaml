@@ -1,0 +1,247 @@
+meta:
+  title: 02  저장·메타데이터 관계
+  description: 카탈로그의 테이블 위치와 객체 저장소의 실제 파일을 구분한다
+  theme: tech-blue
+  profile: engineering-review
+  source: generated
+  layout: horizontal
+  canvas: 1440x960
+  font:
+    primary: Arial
+    cjk: Apple SD Gothic Neo, Arial
+    formula: Arial
+nodes:
+- id: title
+  label: 02  저장·메타데이터 관계
+  type: text
+  bounds:
+    x: 48
+    y: 24
+    width: 1344
+    height: 56
+  style:
+    fontSize: 34
+    align: left
+    fontStyle: 1
+- id: subtitle
+  label: 카탈로그의 테이블 위치와 객체 저장소의 실제 파일을 구분한다
+  type: text
+  bounds:
+    x: 48
+    y: 88
+    width: 1344
+    height: 48
+  style:
+    fontSize: 20
+    align: left
+- id: flink
+  label: 'Flink SQL
+
+    Kafka → Bronze'
+  type: service
+  bounds:
+    x: 80
+    y: 360
+    width: 288
+    height: 112
+  style:
+    fontSize: 22
+- id: spark
+  label: 'Spark Thrift Server
+
+    Silver MERGE · Gold SQL'
+  type: service
+  bounds:
+    x: 1008
+    y: 360
+    width: 320
+    height: 112
+  style:
+    fontSize: 22
+- id: catalog
+  label: 'Iceberg JDBC Catalog
+
+    catalog-db PostgreSQL :5432
+
+    테이블 → metadata.json 위치'
+  type: database
+  bounds:
+    x: 488
+    y: 160
+    width: 384
+    height: 128
+  style:
+    fontSize: 22
+- id: minio
+  label: 'MinIO · S3 API :9000
+
+    warehouse bucket
+
+    metadata · manifest · Parquet
+
+    Bronze / Silver / Gold'
+  type: database
+  bounds:
+    x: 488
+    y: 616
+    width: 384
+    height: 184
+  style:
+    fontSize: 20
+- id: state
+  label: 'checkpoint / savepoint
+
+    flink-state 영속 볼륨'
+  type: database
+  bounds:
+    x: 80
+    y: 616
+    width: 288
+    height: 96
+  style:
+    fontSize: 20
+- id: dbt
+  label: 'dbt-spark
+
+    모델 SQL · 테스트'
+  type: service
+  bounds:
+    x: 1008
+    y: 616
+    width: 320
+    height: 96
+  style:
+    fontSize: 22
+- id: readers
+  label: 공통 카탈로그 + 공통 저장소
+  type: text
+  bounds:
+    x: 488
+    y: 392
+    width: 384
+    height: 64
+  style:
+    fontSize: 24
+    align: center
+- id: legend
+  label: '화살표 = 엔진이 접근하는 대상  |  JDBC: 위치 조회·커밋  |  S3: 실제 파일 읽기·쓰기'
+  type: text
+  bounds:
+    x: 48
+    y: 864
+    width: 1344
+    height: 40
+  style:
+    fontSize: 19
+    align: left
+- id: state-note
+  label: 처리 위치·상태는 별도 flink-state 볼륨에 보관한다. dbt는 Spark를 통해 Iceberg 테이블에 접근한다.
+  type: text
+  bounds:
+    x: 48
+    y: 912
+    width: 1344
+    height: 40
+  style:
+    fontSize: 19
+    align: left
+edges:
+- from: flink
+  to: catalog
+  type: primary
+  label: 'JDBC
+
+    위치 조회·커밋'
+  labelPosition: center
+  style:
+    fontSize: 18
+    exitX: 0.5
+    exitY: 0
+    entryX: 0
+    entryY: 0.5
+    exitDx: 0
+    exitDy: 0
+    entryDx: 0
+    entryDy: 0
+  labelOffset:
+    x: -88
+    y: -36
+- from: spark
+  to: catalog
+  type: primary
+  label: 'JDBC
+
+    위치 조회·커밋'
+  labelPosition: center
+  style:
+    fontSize: 18
+    exitX: 0.5
+    exitY: 0
+    entryX: 1
+    entryY: 0.5
+    exitDx: 0
+    exitDy: 0
+    entryDx: 0
+    entryDy: 0
+  labelOffset:
+    x: 88
+    y: -36
+- from: flink
+  to: minio
+  type: primary
+  label: 'S3
+
+    Bronze 파일 추가'
+  labelPosition: start
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 448
+    y: 440
+  - x: 448
+    y: 704
+  labelOffset:
+    x: -112
+    y: -48
+- from: spark
+  to: minio
+  type: primary
+  label: 'S3
+
+    테이블 파일 읽기·쓰기'
+  labelPosition: start
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 904
+    y: 440
+  - x: 904
+    y: 704
+  labelOffset:
+    x: 112
+    y: -48
+- from: flink
+  to: state
+  type: primary
+  label: '파일 기반
+
+    처리 위치·상태'
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -120
+    y: 0
+- from: dbt
+  to: spark
+  type: primary
+  label: 'Thrift SQL
+
+    :10000'
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: 120
+    y: 0
+modules: []

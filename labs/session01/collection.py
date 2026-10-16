@@ -111,12 +111,52 @@ def validate(stage, source, kafka, bronze, refund_id):
     return checks
 
 
+
+def classroom_summary(data):
+    """Compact projection of a successful full check; evidence remains complete."""
+    stage = data['stage']
+    op = {'insert': 'c', 'update': 'u', 'delete': 'd'}[stage]
+    row = next(r for r in data['kafka_records'] if r.get('op') == op)
+    peer = next(b for b in data['bronze_records'] if identity(b) == identity(row))
+    copies = next(c['bronze_copies'] for c in data['checks'] if tuple(c['identity']) == identity(row))
+    return {'stage': stage, 'passed': data['passed'], 'source_rows': len(data['source_rows']),
+            'refund_id': data['namespace'] + '-r1', 'op': op,
+            'before_amount': (row.get('before') or {}).get('amount'),
+            'after_amount': (row.get('after') or {}).get('amount'),
+            'identity': identity(row), 'source_lsn': row['source_lsn'], 'bronze_copies': copies,
+            'history_ops': [b['op'] for b in data['bronze_records']],
+            'kafka_tombstones': sum(r['tombstone'] for r in data['kafka_records']),
+            'kafka_ts': peer['kafka_ts'], 'ingested_at': peer['ingested_at'],
+            'wait_observation': data.get('wait_observation'),
+            'scope': data['scope']}
+
+
+def format_classroom(data):
+    topic, partition, offset = data['identity']
+    wait = data.get('wait_observation') or {}
+    return '\n'.join([
+        f"stage={data['stage']}  passed={data['passed']}  source_rows={data['source_rows']}",
+        f"refund_id={data['refund_id']}",
+        f"op={data['op']}  before_amount={data['before_amount']}  after_amount={data['after_amount']}",
+        f"topic={topic}",
+        f"partition={partition}  kafka_offset={offset}  bronze_copies={data['bronze_copies']}",
+        f"source_lsn={data['source_lsn']}",
+        f"history_ops={','.join(data['history_ops'])}  kafka_tombstones={data['kafka_tombstones']}",
+        f"kafka_ts={data['kafka_ts']}",
+        f"ingested_at={data['ingested_at']}",
+        f"wait_observed_seconds={wait.get('wait_observed_seconds', 'not_recorded')}",
+        'wait basis: command start to first Bronze observation; not source-commit latency',
+        'scope: this synthetic key only; not an exactly-once guarantee',
+    ])
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('namespace')
     parser.add_argument('action', choices=['kafka', 'source-rows', 'collect-check'])
     parser.add_argument('--stage', choices=['insert', 'update', 'delete'])
     parser.add_argument('--evidence', action='store_true')
+    parser.add_argument('--summary', action='store_true', help='Compact classroom output; full evidence is retained')
     args = parser.parse_args()
     if not re.fullmatch(r's01-[a-z0-9-]{3,48}', args.namespace):
         parser.error('Use a fresh namespace beginning with s01-')
@@ -133,12 +173,21 @@ def main():
         data = {'namespace': args.namespace, 'stage': args.stage, 'source_rows': source,
                 'kafka_records': kafka, 'bronze_records': bronze, 'checks': checks, 'passed': True,
                 'scope': 'This synthetic key only; not an end-to-end exactly-once or recovery guarantee'}
-    print(json.dumps(data, ensure_ascii=False, default=str, indent=2))
+        event = {'insert':'refund','update':'correction','delete':'delete'}[args.stage]
+        wait_path = Path('artifacts/runs/session01') / args.namespace / f'wait-{event}.json'
+        data['wait_observation'] = json.loads(wait_path.read_text()) if wait_path.exists() else None
+    if args.summary and args.action != 'collect-check':
+        parser.error('--summary is supported only for collect-check')
+    displayed = classroom_summary(data) if args.summary else data
+    print(format_classroom(displayed) if args.summary else json.dumps(displayed, ensure_ascii=False, default=str, indent=2))
     if args.evidence:
         directory = Path('artifacts/runs/session01') / args.namespace
         directory.mkdir(parents=True, exist_ok=True)
         (directory / f"collection-{args.stage or args.action}.json").write_text(
             json.dumps(data, ensure_ascii=False, default=str, indent=2))
+        if args.action == 'collect-check':
+            (directory / f'collection-{args.stage}-summary.json').write_text(
+                json.dumps(classroom_summary(data), ensure_ascii=False, default=str, indent=2))
 
 
 if __name__ == '__main__':

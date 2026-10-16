@@ -1,0 +1,412 @@
+meta:
+  title: 03  실행 환경
+  description: 학생은 SQL·설계서를 작성하고, 강사는 맥미니에서 공통 실습을 실행한다
+  theme: tech-blue
+  profile: engineering-review
+  source: generated
+  layout: horizontal
+  canvas: 1664x1216
+  font:
+    primary: Arial
+    cjk: Apple SD Gothic Neo, Arial
+    formula: Arial
+nodes:
+- id: title
+  label: 03  실행 환경
+  type: text
+  bounds:
+    x: 48
+    y: 24
+    width: 1568
+    height: 56
+  style:
+    fontSize: 34
+    align: left
+    fontStyle: 1
+- id: subtitle
+  label: 명령 실행은 SSH, UI 조회는 SSH 터널. 코드는 맥미니에서 동기화한다.
+  type: text
+  bounds:
+    x: 48
+    y: 88
+    width: 1568
+    height: 48
+  style:
+    fontSize: 20
+    align: left
+- id: teacher
+  label: '강사 노트북
+
+    명령 실행 · 화면 공유'
+  type: user
+  bounds:
+    x: 48
+    y: 208
+    width: 256
+    height: 104
+  style:
+    fontSize: 22
+- id: github
+  label: 'GitHub 저장소
+
+    실습 코드 · 자료'
+  type: document
+  bounds:
+    x: 48
+    y: 432
+    width: 256
+    height: 104
+  style:
+    fontSize: 22
+- id: student
+  label: '학생 노트북
+
+    SQL · 개인 설계서 작성'
+  type: user
+  bounds:
+    x: 48
+    y: 720
+    width: 256
+    height: 112
+  style:
+    fontSize: 22
+- id: repo
+  label: '맥미니 SSH 셸
+
+    실습 체크아웃'
+  type: document
+  bounds:
+    x: 424
+    y: 208
+    width: 304
+    height: 104
+  style:
+    fontSize: 22
+  module: host
+- id: cli
+  label: 'Docker CLI / Compose
+
+    전용 Docker 소켓 사용'
+  type: service
+  bounds:
+    x: 424
+    y: 432
+    width: 304
+    height: 104
+  style:
+    fontSize: 22
+  module: host
+- id: mount
+  label: '호스트 코드 경로를
+
+    VM 안에 동일 경로로 마운트'
+  type: text
+  bounds:
+    x: 424
+    y: 640
+    width: 304
+    height: 88
+  style:
+    fontSize: 20
+    align: left
+- id: engine
+  label: 'Docker Engine
+
+    Linux ARM64'
+  type: service
+  bounds:
+    x: 1064
+    y: 208
+    width: 208
+    height: 104
+  style:
+    fontSize: 22
+  module: vm
+- id: source
+  label: 'source-db
+
+    PostgreSQL'
+  type: database
+  bounds:
+    x: 808
+    y: 392
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: connect
+  label: 'connect
+
+    Debezium'
+  type: service
+  bounds:
+    x: 1064
+    y: 392
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: kafka
+  label: 'kafka
+
+    KRaft broker'
+  type: queue
+  bounds:
+    x: 1320
+    y: 392
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: jm
+  label: 'jobmanager
+
+    Flink 제어'
+  type: service
+  bounds:
+    x: 808
+    y: 552
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: tm
+  label: 'taskmanager
+
+    Flink 처리'
+  type: service
+  bounds:
+    x: 1064
+    y: 552
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: spark
+  label: 'spark
+
+    Spark Thrift'
+  type: service
+  bounds:
+    x: 1320
+    y: 552
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: catalog
+  label: 'catalog-db
+
+    JDBC Catalog'
+  type: database
+  bounds:
+    x: 808
+    y: 712
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: minio
+  label: 'minio
+
+    S3 호환 저장소'
+  type: database
+  bounds:
+    x: 1064
+    y: 712
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: runner
+  label: 'runner
+
+    Python · dbt'
+  type: service
+  bounds:
+    x: 1320
+    y: 712
+    width: 208
+    height: 96
+  style:
+    fontSize: 22
+  module: vm
+- id: airflow
+  label: 'airflow · 이후 회차
+
+    1회차는 중지'
+  type: service
+  bounds:
+    x: 1320
+    y: 872
+    width: 208
+    height: 88
+  style:
+    fontSize: 22
+  module: vm
+- id: ports
+  label: 'macOS 127.0.0.1
+
+    Flink UI :28081
+
+    Spark UI :24040
+
+    Connect :28083
+
+    Source DB :25432'
+  type: text
+  bounds:
+    x: 424
+    y: 792
+    width: 304
+    height: 184
+  style:
+    fontSize: 18
+    align: left
+  module: host
+- id: volumes
+  label: 'VM의 전용 볼륨
+
+    source-data · catalog-data · kafka-data
+
+    warehouse · flink-state · airflow-home'
+  type: text
+  bounds:
+    x: 808
+    y: 1024
+    width: 720
+    height: 104
+  style:
+    fontSize: 20
+    align: left
+  module: vm
+- id: footer
+  label: 강사 노트북 localhost:28081 → SSH 터널 → 맥미니 loopback:28081 → VM의 Flink UI:8081
+  type: text
+  bounds:
+    x: 48
+    y: 1168
+    width: 1552
+    height: 48
+  style:
+    fontSize: 20
+    align: left
+edges:
+- from: teacher
+  to: repo
+  type: primary
+  label: SSH
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: 0
+    y: -24
+- from: github
+  to: repo
+  type: primary
+  label: 맥미니에서 git pull
+  labelPosition: center
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 176
+    y: 360
+  - x: 576
+    y: 360
+  labelOffset:
+    x: 0
+    y: -24
+- from: teacher
+  to: student
+  type: data
+  label: 화면 공유
+  labelPosition: end
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 16
+    y: 260
+  - x: 16
+    y: 656
+  - x: 176
+    y: 656
+  labelOffset:
+    x: 0
+    y: -24
+- from: repo
+  to: cli
+  type: primary
+  label: 설정 읽기
+  labelPosition: center
+  style:
+    fontSize: 18
+    exitX: 1
+    exitY: 1
+    entryX: 1
+    entryY: 0
+  labelOffset:
+    x: -64
+    y: 0
+- from: cli
+  to: engine
+  type: primary
+  label: 'Docker API
+
+    Unix socket'
+  labelPosition: center
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 760
+    y: 484
+  - x: 760
+    y: 260
+  labelOffset:
+    x: -96
+    y: 0
+- from: engine
+  to: connect
+  type: primary
+  label: 컨테이너 실행
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: 120
+    y: 0
+- from: ports
+  to: jm
+  type: data
+  labelPosition: center
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 760
+    y: 884
+  - x: 760
+    y: 600
+  labelOffset:
+    x: 80
+    y: -80
+modules:
+- id: host
+  label: Mac mini / macOS 호스트 영역
+  style:
+    fillColor: '#F1F5F9'
+    strokeColor: '#94A3B8'
+    rounded: false
+- id: vm
+  label: 같은 Mac mini / Lima Linux ARM64 VM · Docker Compose
+  style:
+    fillColor: '#EFF6FF'
+    strokeColor: '#93C5FD'
+    rounded: false

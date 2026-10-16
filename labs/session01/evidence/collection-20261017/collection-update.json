@@ -1,0 +1,132 @@
+{
+  "namespace": "s01-review-20261017a",
+  "stage": "update",
+  "source_rows": [
+    {
+      "refund_id": "s01-review-20261017a-r1",
+      "payment_id": "s01-review-20261017a-p1",
+      "amount": 30000,
+      "status": "success"
+    }
+  ],
+  "kafka_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 18,
+      "key": {
+        "refund_id": "s01-review-20261017a-r1"
+      },
+      "tombstone": false,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26854632,
+      "source_ts_ms": 1792165024120,
+      "connector_ts_ms": 1792165024186
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 19,
+      "key": {
+        "refund_id": "s01-review-20261017a-r1"
+      },
+      "tombstone": false,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26856056,
+      "source_ts_ms": 1792165035977,
+      "connector_ts_ms": 1792165036172
+    }
+  ],
+  "bronze_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 18,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26854632,
+      "source_ts_ms": 1792165024120,
+      "connector_ts_ms": 1792165024186,
+      "kafka_ts": "2026-10-16 15:37:04.516000",
+      "ingested_at": "2026-10-16 15:37:04.525000"
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 19,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26856056,
+      "source_ts_ms": 1792165035977,
+      "connector_ts_ms": 1792165036172,
+      "kafka_ts": "2026-10-16 15:37:16.543000",
+      "ingested_at": "2026-10-16 15:37:16.555000"
+    }
+  ],
+  "checks": [
+    {
+      "op": "c",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        18
+      ],
+      "bronze_copies": 1
+    },
+    {
+      "op": "u",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        19
+      ],
+      "bronze_copies": 1
+    }
+  ],
+  "passed": true,
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee",
+  "wait_observation": {
+    "namespace": "s01-review-20261017a",
+    "event": "correction",
+    "bronze_visible": true,
+    "wait_observed_seconds": 9.17,
+    "wait_started_at": "2026-10-16T15:37:16.077862+00:00",
+    "bronze_observed_at": "2026-10-16T15:37:24.350417+00:00"
+  }
+}

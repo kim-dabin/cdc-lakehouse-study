@@ -1,0 +1,315 @@
+meta:
+  title: 01  데이터 흐름
+  description: 원천의 변경을 남기고, 현재 상태와 분석 지표로 변환한다
+  theme: tech-blue
+  profile: engineering-review
+  source: generated
+  layout: horizontal
+  canvas: 1600x1024
+  font:
+    primary: Arial
+    cjk: Apple SD Gothic Neo, Arial
+    formula: Arial
+nodes:
+- id: title
+  label: 01  데이터 흐름
+  type: text
+  bounds:
+    x: 48
+    y: 24
+    width: 1504
+    height: 56
+  style:
+    fontSize: 34
+    align: left
+    fontStyle: 1
+- id: subtitle
+  label: 1회차는 원천 변경과 Bronze 기록을 대조한다. Spark·dbt는 후속 회차에 연결한다.
+  type: text
+  bounds:
+    x: 48
+    y: 88
+    width: 1504
+    height: 48
+  style:
+    fontSize: 20
+    align: left
+- id: pg
+  label: 'PostgreSQL
+
+    주문 · 결제 · 환불'
+  type: database
+  bounds:
+    x: 64
+    y: 224
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: ingest
+- id: cdc
+  label: 'Debezium
+
+    초기 스냅샷 + WAL'
+  type: service
+  bounds:
+    x: 368
+    y: 224
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: ingest
+- id: kafka
+  label: 'Kafka
+
+    테이블별 변경 이벤트'
+  type: queue
+  bounds:
+    x: 672
+    y: 224
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: ingest
+- id: flink
+  label: 'Flink SQL
+
+    원문 + 전달 위치'
+  type: service
+  bounds:
+    x: 976
+    y: 224
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: ingest
+- id: bronze
+  label: 'Iceberg Bronze
+
+    변경 이력'
+  type: database
+  bounds:
+    x: 1280
+    y: 224
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: ingest
+- id: spark
+  label: 'Spark SQL
+
+    최신 버전 · MERGE'
+  type: service
+  bounds:
+    x: 368
+    y: 536
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: analytics
+- id: silver
+  label: 'Iceberg Silver
+
+    키별 현재 상태'
+  type: database
+  bounds:
+    x: 672
+    y: 536
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: analytics
+- id: dbt
+  label: 'dbt + Spark
+
+    모델 SQL · 테스트'
+  type: service
+  bounds:
+    x: 976
+    y: 536
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: analytics
+- id: gold
+  label: 'Iceberg Gold
+
+    주문별 · 일별 마트'
+  type: database
+  bounds:
+    x: 1280
+    y: 536
+    width: 208
+    height: 112
+  style:
+    fontSize: 22
+  module: analytics
+- id: query
+  label: '활용 테이블 조회
+
+    후속 회차 검증'
+  type: terminal
+  bounds:
+    x: 1280
+    y: 800
+    width: 208
+    height: 88
+  style:
+    fontSize: 22
+- id: example
+  label: '1회차 관찰
+
+    같은 refund_id
+
+    c: 20,000원
+
+    u: 30,000원
+
+    d: 원천 삭제'
+  type: text
+  bounds:
+    x: 64
+    y: 504
+    width: 256
+    height: 192
+  style:
+    fontSize: 22
+    align: left
+- id: scope
+  label: Bronze / Silver / Gold는 Iceberg 테이블의 논리 계층이다. 실제 파일은 같은 MinIO에 저장된다.
+  type: text
+  bounds:
+    x: 48
+    y: 936
+    width: 1464
+    height: 48
+  style:
+    fontSize: 20
+    align: left
+- id: timing
+  label: '1회차: Bronze c/u/d 조회 검증  /  후속 회차: Silver·Gold 갱신과 Airflow 연결'
+  type: text
+  bounds:
+    x: 48
+    y: 984
+    width: 1464
+    height: 40
+  style:
+    fontSize: 18
+    align: left
+edges:
+- from: pg
+  to: cdc
+  type: primary
+  label: 변경 캡처
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: cdc
+  to: kafka
+  type: primary
+  label: CDC 발행
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: kafka
+  to: flink
+  type: primary
+  label: 이벤트 소비
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: flink
+  to: bronze
+  type: primary
+  label: 이력 추가
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: bronze
+  to: spark
+  type: primary
+  label: 이력 조회
+  labelPosition: center
+  style:
+    fontSize: 18
+  waypoints:
+  - x: 1384
+    y: 432
+  - x: 328
+    y: 432
+  - x: 328
+    y: 592
+  labelOffset:
+    x: 0
+    y: -24
+- from: spark
+  to: silver
+  type: primary
+  label: MERGE
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: silver
+  to: dbt
+  type: primary
+  label: 모델 입력
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: dbt
+  to: gold
+  type: primary
+  label: 모델 저장
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: -24
+    y: -24
+- from: gold
+  to: query
+  type: primary
+  label: 지표 읽기
+  labelPosition: center
+  style:
+    fontSize: 18
+  labelOffset:
+    x: 112
+    y: 0
+modules:
+- id: ingest
+  label: 1회차 · 원천 / Kafka / Bronze 대조
+  style:
+    fillColor: '#F1F5F9'
+    strokeColor: '#94A3B8'
+- id: analytics
+  label: 후속 회차 · 현재 상태 구성과 활용 테이블
+  style:
+    fillColor: '#EFF6FF'
+    strokeColor: '#93C5FD'

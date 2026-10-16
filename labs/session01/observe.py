@@ -3,6 +3,7 @@ import argparse
 import json
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 import os
 import psycopg2
@@ -71,13 +72,16 @@ def wait(namespace,event):
         AND get_json_object(payload,'$.{part}.{pk}')='{value}'
         AND get_json_object(payload,'$.{part}.amount')='{amount}'"""
     started=time.monotonic()
+    wait_started_at=datetime.now(timezone.utc).isoformat()
     for _ in range(60):
         if spark(sql)[0][0]>0:
             if event=='payment':
                 if spark(f"SELECT count(*) FROM lake.bronze.cdc_events WHERE topic='cdc.public.orders' AND get_json_object(payload,'$.after.order_id')='{namespace}-o1'")[0][0]==0:
                     time.sleep(2);continue
-            print(json.dumps({'event':event,'bronze_visible':True,'wait_observed_seconds':round(time.monotonic()-started,2)}))
-            return
+            return {'namespace':namespace,'event':event,'bronze_visible':True,
+                    'wait_observed_seconds':round(time.monotonic()-started,2),
+                    'wait_started_at':wait_started_at,
+                    'bronze_observed_at':datetime.now(timezone.utc).isoformat()}
         time.sleep(2)
     raise RuntimeError(f'Event not visible in Bronze within polling budget: {event}; inspect CDC/Flink before refreshing Gold')
 
@@ -90,7 +94,13 @@ def main():
         p.error('namespace must start with s01- and contain lowercase letters, numbers or hyphens only')
     if a.action=='wait':
         if not a.event:p.error('--event is required')
-        wait(a.namespace,a.event);return
+        data=wait(a.namespace,a.event)
+        print(json.dumps(data,ensure_ascii=False,indent=2))
+        if a.evidence:
+            out=Path('artifacts/runs/session01')/a.namespace
+            out.mkdir(parents=True,exist_ok=True)
+            (out/f'wait-{a.event}.json').write_text(json.dumps(data,indent=2))
+        return
     data=spark(bronze_sql(a.namespace)) if a.action=='bronze' else layers(a.namespace)
     if a.action=='check':
         if a.expected is None:p.error('--expected is required')

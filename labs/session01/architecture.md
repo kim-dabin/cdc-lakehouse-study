@@ -30,8 +30,8 @@ flowchart TB
     spark --> silver[(Iceberg Silver<br/>orders / payments / refunds<br/>현재 상태 · 삭제 표시)]
     silver --> dbt[dbt-spark → Spark Thrift<br/>모델 SQL · 의존성 · 테스트]
     dbt --> gold[(Iceberg Gold<br/>fct_order_settlement<br/>mart_daily_settlement)]
-    gold --> result[SQL 조회<br/>100000 → 80000 → 70000]
-    manual[1회차: 강사가 수동 갱신] -.-> spark
+    gold --> result[후속 활용 테이블 조회]
+    manual[후속 회차: Silver·Gold 갱신] -.-> spark
     airflow[이후 회차: Airflow 주기 실행] -.-> spark
     catalog[(별도 PostgreSQL<br/>Iceberg JDBC Catalog)] -. 공통 테이블 위치 .-> flink
     catalog -. 같은 카탈로그 .-> spark
@@ -42,7 +42,7 @@ flowchart TB
   end
 ```
 
-1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 기대 이벤트·원천 확인 SQL·개인 파이프라인 설계를 작성한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림의 금액은 전체 프로젝트의 후속 마트 예시다.
+1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 기대 이벤트·원천 확인 SQL·개인 파이프라인 설계를 작성한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림은 1회차 Bronze 검증과 후속 Silver·Gold를 구분한다.
 
 ## 예제 원천 모델
 
@@ -79,7 +79,7 @@ erDiagram
 | Silver | 키별 최신 상태·삭제 표시·원천 버전 | 역할 설명, 구현·검증은 후속 회차 |
 | Gold | 활용 테이블과 테스트 | 역할 설명, 모델링은 후속 회차 |
 
-Flink는 Bronze에 append 이력을 저장한다. 원천에서 삭제해도 c/u/d 이력은 남는다. Kafka null tombstone은 Flink 입력에서 제외하며 non-null op=d는 보관한다. source.lsn은 원천 버전 정보이고 Kafka 위치는 토픽·파티션·오프셋을 함께 사용한다.
+Flink는 Bronze에 append 이력을 저장한다. 원천에서 삭제해도 c/u/d 이력은 남는다. Kafka null tombstone은 Flink 입력에서 제외하며 non-null op=d는 보관한다. source.lsn은 원천 버전 정보이고 Kafka 위치는 토픽·파티션·오프셋을 함께 사용한다. Kafka key는 Bronze 별도 컬럼으로 저장하지 않으며 원천 PK는 payload의 before/after에서 추출한다. 초기 스냅샷은 r, 새 변경은 c/u/d다.
 
 ## 개인 프로젝트 작성 틀
 

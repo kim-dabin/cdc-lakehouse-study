@@ -1,0 +1,75 @@
+{
+  "namespace": "s01-review-20261017a",
+  "stage": "insert",
+  "source_rows": [
+    {
+      "refund_id": "s01-review-20261017a-r1",
+      "payment_id": "s01-review-20261017a-p1",
+      "amount": 20000,
+      "status": "success"
+    }
+  ],
+  "kafka_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 18,
+      "key": {
+        "refund_id": "s01-review-20261017a-r1"
+      },
+      "tombstone": false,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26854632,
+      "source_ts_ms": 1792165024120,
+      "connector_ts_ms": 1792165024186
+    }
+  ],
+  "bronze_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 18,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-review-20261017a-r1",
+        "payment_id": "s01-review-20261017a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26854632,
+      "source_ts_ms": 1792165024120,
+      "connector_ts_ms": 1792165024186,
+      "kafka_ts": "2026-10-16 15:37:04.516000",
+      "ingested_at": "2026-10-16 15:37:04.525000"
+    }
+  ],
+  "checks": [
+    {
+      "op": "c",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        18
+      ],
+      "bronze_copies": 1
+    }
+  ],
+  "passed": true,
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee",
+  "wait_observation": {
+    "namespace": "s01-review-20261017a",
+    "event": "refund",
+    "bronze_visible": true,
+    "wait_observed_seconds": 11.3,
+    "wait_started_at": "2026-10-16T15:37:04.216627+00:00",
+    "bronze_observed_at": "2026-10-16T15:37:15.305727+00:00"
+  }
+}

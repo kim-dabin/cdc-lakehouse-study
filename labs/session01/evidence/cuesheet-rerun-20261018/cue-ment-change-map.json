@@ -1,0 +1,187 @@
+[
+  {
+    "original_paragraph": 1,
+    "original": "수업 중 보조 모니터에 띄워두고 위에서 아래로 그대로 복사·실행하며 읽어주실 수 있도록 실시간 시연 파트(01:10–01:55, 45분)만 정리한 큐시트입니다.",
+    "before": "수업 중 보조 모니터에 띄워두고 순서대로 실행하는 실시간 시연 구간(01:10–01:55, 45분) 큐시트입니다. 강사는 맥미니에서 실행하고 학생은 로컬 SQL·관찰 기록을 작성합니다. 학생 Docker 기동·SSH 접속은 하지 않으며 개인 설계는 3회차에 확정합니다. 회색 None은 코드 언어 표시이며 실행 명령에 포함하지 않습니다.",
+    "after": "수업 중 보조 모니터에 띄워두고 위에서 아래로 그대로 복사·실행하며 읽어주실 수 있도록 실시간 시연 파트(01:10–01:55, 45분)만 정리한 큐시트입니다. 강사는 맥미니에서 실행하고 학생은 로컬 SQL·관찰 기록을 작성합니다. 학생 Docker 기동·SSH 접속은 하지 않으며 개인 설계는 3회차에 확정합니다. 회색 None은 코드 언어 표시이며 실행 명령에 포함하지 않습니다.",
+    "reason": "원문 도입 복원; 실제 학생 활동·코드 언어 표시만 보완",
+    "applied": true
+  },
+  {
+    "original_paragraph": 3,
+    "original": "맥미니 작업용 터미널에서 아래 명령어를 순서대로 실행해 Airflow는 끄고 파이프라인을 기동합니다.",
+    "before": "맥미니 작업용 터미널에서 순서대로 실행해 Airflow를 정지하고 기동합니다. 초기 설치·이미지 빌드는 수업 전에 끝냅니다. --no-build는 로컬 이미지만 사용하며 이미지가 없으면 중단합니다.",
+    "after": "맥미니 작업용 터미널에서 아래 명령어를 순서대로 실행해 Airflow는 끄고 파이프라인을 기동합니다. 초기 설치·이미지 빌드는 수업 전에 끝냅니다. 수업 당일 --no-build는 준비된 로컬 이미지만 사용하며 이미지가 없으면 중단합니다.",
+    "reason": "원문 준비 안내 복원; no-build의 실제 조건 보완",
+    "applied": true
+  },
+  {
+    "original_paragraph": 18,
+    "original": "화면 포인트: 터미널에 떠 있는 컨테이너 목록(source-db, connect, kafka, jobmanager, taskmanager, catalog-db, minio, spark, runner)과 브라우저의 Flink Web UI 화면을 함께 보여줍니다 (Apache Iceberg Flink Writes 공식 문서).",
+    "before": "화면 포인트: source-db, connect, kafka, jobmanager, taskmanager, catalog-db, minio, spark, runner의 상시 서비스 9개와 Flink UI를 보여줍니다. Spark와 runner는 별개입니다. compose.yaml을 사용하며 minio-init은 일회성 버킷 생성 서비스, Airflow는 정지 상태입니다.",
+    "after": "화면 포인트: 터미널에 떠 있는 컨테이너 목록(source-db, connect, kafka, jobmanager, taskmanager, catalog-db, minio, spark, runner)과 브라우저의 Flink Web UI 화면을 함께 보여줍니다. 핵심 상시 서비스는 9개이며 Spark와 runner는 별개입니다. compose.yaml을 사용하고 minio-init은 일회성 버킷 생성 서비스, Airflow는 정지 상태입니다.",
+    "reason": "원문 화면 소개 복원; 실제 서비스 수·파일명 보완",
+    "applied": true
+  },
+  {
+    "original_paragraph": 20,
+    "original": "\"아키텍처 그림에서 봤던 구성 요소들이 지금 맥미니 Docker 위에 이렇게 떠 있습니다. 원본 PostgreSQL인 source-db, Debezium 커넥터가 도는 connect, kafka, 그리고 Flink와 Iceberg 카탈로그(catalog-db), 실제 Parquet 파일이 쌓이는 minio입니다.\"",
+    "before": "\"구성 요소들이 맥미니의 Lima·Docker에서 실행 중입니다. catalog-db의 JDBC Catalog는 현재 Iceberg 메타데이터 위치를 관리하고 MinIO에는 메타데이터와 Parquet 파일이 저장됩니다. Spark는 SQL 엔진, runner는 Python·dbt 실행용입니다. 오늘은 Bronze까지 수집하고 Silver·Gold는 별도 변환 작업을 실행할 때 갱신합니다.\"",
+    "after": "\"아키텍처 그림에서 봤던 구성 요소들이 지금 맥미니 Docker 위에 이렇게 떠 있습니다. 원본 PostgreSQL인 source-db, Debezium 커넥터가 도는 connect, kafka, 그리고 Flink와 Iceberg 카탈로그(catalog-db), 실제 Parquet 파일이 쌓이는 minio입니다.\"",
+    "reason": "맞는 원문 구성 소개 그대로 복원",
+    "applied": true
+  },
+  {
+    "original_paragraph": 21,
+    "original": "\"브라우저의 Flink UI를 보시면 cdc-bronze라는 스트리밍 잡이 RUNNING 상태로 돌면서 주기적으로 체크포인트를 찍고 있습니다.\"",
+    "before": "\"Flink UI의 RUNNING과 체크포인트는 상태를 보는 단서입니다. 체크포인트가 성공해도 sink 커밋이 실패할 수 있으므로 마지막에는 Bronze 조회와 대조 결과를 확인합니다. 강사 노트북의 localhost는 앞서 연 SSH 터널을 통해 맥미니로 연결됩니다.\"",
+    "after": "\"브라우저의 Flink UI를 보시면 cdc-bronze라는 스트리밍 잡이 RUNNING 상태로 돌면서 주기적으로 체크포인트를 찍고 있습니다.\"",
+    "reason": "맞는 원문 RUNNING·주기적 checkpoint 관찰 그대로 복원; 공식 링크 유지",
+    "applied": true
+  },
+  {
+    "original_paragraph": 25,
+    "original": "화면에서 짚어줄 3곳 (학생 체크리스트 3절 답안과 직결):",
+    "before": "코드 읽기 — Catalog·raw·checkpoint·null 제외 설정을 학생 SQL [A], 제출 양식 3절에 연결:",
+    "after": "화면에서 짚어줄 3곳 (학생 SQL [A]·제출 양식 3절과 연결):",
+    "reason": "원래 화면 안내 문구 복원; 현재 학생 파일 이름만 정렬",
+    "applied": true
+  },
+  {
+    "original_paragraph": 26,
+    "original": "카탈로그 연결 설정 (CREATE CATALOG lake): 현재 실습 코드는 컨테이너 구성을 단순화하기 위해 PostgreSQL(catalog-db)을 직접 바라보는 JdbcCatalog를 사용하며, 현업에서는 HTTP API 기반의 RESTCatalog도 널리 사용합니다 (Apache Iceberg Flink Configuration 공식 문서, Apache Iceberg Table Spec 공식 문서).",
+    "before": "Catalog·warehouse (CREATE CATALOG lake): JdbcCatalog는 catalog-db의 현재 메타데이터 포인터를 관리하고, 실제 데이터·메타데이터 파일은 MinIO에 저장합니다. Flink checkpoint·savepoint는 별도 상태 볼륨에 저장합니다.",
+    "after": "카탈로그 연결 설정 (CREATE CATALOG lake): 현재 실습 코드는 컨테이너 구성을 단순화하기 위해 PostgreSQL(catalog-db)을 직접 바라보는 JdbcCatalog를 사용하며, 현업에서는 HTTP API 기반의 RESTCatalog도 사용합니다. Catalog는 현재 메타데이터 위치를 관리하고 실제 데이터·메타데이터 파일은 MinIO에, Flink checkpoint·savepoint는 별도 상태 볼륨에 저장합니다.",
+    "reason": "원문 JDBC 선택 이유·REST 대안 복원; 실제 포인터·저장 역할 보완",
+    "applied": true
+  },
+  {
+    "original_paragraph": 27,
+    "original": "토픽 패턴과 포맷 설정: orders, payments, refunds 3개 테이블의 CDC 토픽을 구독하며, format을 raw로 지정해 Kafka 메시지 value 전체를 payload 문자열 컬럼 하나로 그대로 읽습니다 (Confluent Flink SQL Raw Format 문서).",
+    "before": "토픽 패턴·raw 포맷: orders·payments·refunds 토픽의 Kafka value 원문을 payload로 읽고 수집 위치를 함께 저장합니다. Kafka key는 별도 Bronze 컬럼으로 저장하지 않습니다. checkpoint 설정도 짚고 완료 뒤 sink 커밋과 실제 조회를 확인해야 함을 설명합니다.",
+    "after": "토픽 패턴과 포맷 설정: orders, payments, refunds 3개 테이블의 CDC 토픽을 구독하며, format을 raw로 지정해 Kafka 메시지 value 전체를 payload 문자열 컬럼 하나로 그대로 읽습니다. 강사 참고: Kafka key는 별도 Bronze 컬럼으로 저장하지 않습니다. checkpoint 설정도 짚고, 커밋 성공과 실제 조회까지 확인합니다.",
+    "reason": "원문 raw 설명 복원; Apache Flink 공식 링크 유지, 추가 조건은 짧은 강사 참고",
+    "applied": true
+  },
+  {
+    "original_paragraph": 28,
+    "original": "Tombstone 제외 조건 (WHERE payload IS NOT NULL): DELETE 직후 따라오는 빈 메시지(value=null인 tombstone)는 버리고, 실제 삭제 정보가 담긴 op=d 이벤트까지만 Bronze에 추가(append)합니다 (Debezium PostgreSQL Connector 공식 문서).",
+    "before": "Tombstone 제외 (WHERE payload IS NOT NULL): value=null인 tombstone만 제외하고 non-null c/u/d와 초기 스냅샷 r 이벤트는 Bronze에 append합니다. Flink에서 Upsert하는 작업이 아닙니다.",
+    "after": "Tombstone 제외 조건 (WHERE payload IS NOT NULL): DELETE 뒤에 따라오는 빈 메시지(value=null인 tombstone)는 버리고, 실제 삭제 정보가 담긴 op=d를 포함해 c/u/d와 초기 스냅샷 r 이벤트는 모두 Bronze에 추가(append)합니다.",
+    "reason": "원문 제외 메커니즘 복원; d만 남기는 것으로 읽히는 오류 수정",
+    "applied": true
+  },
+  {
+    "original_paragraph": 38,
+    "original": "\"제가 실행하기 전에 여러분 노트북의 student-worksheet.sql에 확인용 SELECT 두 줄을 채우시고, submission.md 4절 표의 사전 예측 칸에 각 단계에서 원천 행이 몇 개일지, op와 before 및 after 금액이 어떻게 찍힐지 먼저 적어보세요.\"",
+    "before": "\"SQL [B]에 같은 my-r1을 조회하는 SELECT 두 개를 작성하고, [C]와 submission.md 4절의 기대값을 먼저 채우세요. my-r1은 예측용 이름입니다. 실제 화면의 CASE_ID와 환불 ID를 기록하세요. 개인 테이블·DDL은 작성하지 않습니다.\"",
+    "after": "\"제가 실행하기 전에 여러분 노트북의 student-worksheet.sql에 확인용 SELECT 두 줄을 채우시고, submission.md 4절 표의 사전 예측 칸에 각 단계에서 원천 행이 몇 개일지, op와 before 및 after 금액이 어떻게 찍힐지 먼저 적어보세요. SQL의 my-r1은 예측용이니, 실제 화면의 CASE_ID와 환불 ID도 적어주세요. 오늘 개인 테이블이나 DDL을 작성하는 건 아닙니다.\"",
+    "reason": "원문 SELECT·예측 지시 복원; ID 기준·활동 범위만 덧붙임",
+    "applied": true
+  },
+  {
+    "original_paragraph": 47,
+    "original": "화면 고정: 마지막 collect-check 출력 화면을 60초간 그대로 멈춰 둡니다.",
+    "before": "화면 고정: 마지막 요약 화면을 최소 60초 유지합니다. 원천 변경 직후 Kafka가 비어 있을 수 있으므로 wait 뒤 Kafka를 보여줍니다.",
+    "after": "화면 고정: 마지막 collect-check 요약 출력 화면을 60초간 그대로 멈춰 둡니다. 강사 참고: 원천 변경 직후 Kafka가 비어 있을 수 있어 wait 뒤에 조회합니다. 요약의 None은 JSON null이며 전체 checks·kafka_records는 상세 증거 JSON에 있습니다.",
+    "reason": "원래 화면 고정 지시 유지; 출력 표현 설명을 읽는 멘트와 분리",
+    "applied": true
+  },
+  {
+    "original_paragraph": 49,
+    "original": "\"원천 DB(source_rows)를 보면 amount가 20000인 행 1개가 들어갔습니다.\"",
+    "before": "\"원천 조회는 amount=20000인 환불 한 행입니다. 요약의 source_rows=1과 passed=True를 확인하세요.\"",
+    "after": "\"원천 DB(source_rows)를 보면 amount가 20000인 행 1개가 들어갔습니다.\"",
+    "reason": "맞는 원문 원천 1행 설명 복원",
+    "applied": true
+  },
+  {
+    "original_paragraph": 50,
+    "original": "\"아래 checks와 kafka_records를 보세요. 새로 생긴 행이라 이전 상태가 없으니 op는 c, before는 null, after.amount는 20000이 찍혔습니다.\"",
+    "before": "\"요약의 op=c, before_amount=None, after_amount=20000을 보세요. None은 JSON의 null에 해당합니다. 전체 checks·kafka_records는 요약이 아니라 별도 증거 JSON에 있습니다.\"",
+    "after": "\"방금 본 Kafka 이벤트와 지금 요약을 보세요. 새로 생긴 행이라 이전 상태가 없으니 op는 c, before는 null, after 금액은 20000이 찍혔습니다.\"",
+    "reason": "현재 화면에 없는 checks·kafka_records 지시만 수정; 원래 관찰 순서·말투 유지",
+    "applied": true
+  },
+  {
+    "original_paragraph": 51,
+    "original": "\"가장 중요한 건 Kafka의 (topic, partition_id, kafka_offset) 위치와 똑같은 오프셋 번호가 Iceberg Bronze에도 1건(bronze_copies: 1) 들어갔고 source_lsn도 일치한다는 점입니다. 여러분 표의 INSERT 줄에 오프셋 번호와 금액을 적어주세요.\"",
+    "before": "\"Kafka key의 refund_id가 원천 PK와 같고, 같은 topic·partition·offset과 내용이 Bronze에 한 번 저장됐는지 봅니다. bronze_copies=1을 확인하고 제출 4절에 실제 금액·offset·copies를 적으세요. 이번 키의 결과를 전체 데이터의 무누락·중복 방지 보장으로 확대하지 않습니다.\"",
+    "after": "\"가장 중요한 건 Kafka의 (topic, partition_id, kafka_offset) 위치와 똑같은 오프셋 번호가 Iceberg Bronze에도 1건(bronze_copies: 1) 들어갔고 source_lsn도 일치한다는 점입니다. 여러분 표의 INSERT 줄에 오프셋 번호와 금액을 적어주세요.\"",
+    "reason": "맞는 원문 위치·source_lsn 대조와 기록 지시 복원",
+    "applied": true
+  },
+  {
+    "original_paragraph": 60,
+    "original": "화면 고정: 출력 화면을 60초간 그대로 멈춰 둡니다.",
+    "before": "화면 고정: 출력 화면을 60초간 그대로 멈춰 둡니다.",
+    "after": "화면 고정: 출력 화면을 60초간 그대로 멈춰 둡니다. 강사 참고: offset 순서는 같은 토픽·파티션 안에서 비교하며 source_lsn을 단독 고유 이벤트 ID로 쓰지 않습니다.",
+    "reason": "원래 고정 지시 유지; 기술적 한정은 짧은 강사 참고",
+    "applied": true
+  },
+  {
+    "original_paragraph": 62,
+    "original": "\"원천 DB(source_rows)는 덮어써졌기 때문에 여전히 1행이고 금액만 30000으로 바뀌어 있습니다. 즉 원천 DB만 보면 원래 얼마였는지 알 수 없습니다.\"",
+    "before": "\"원천의 현재 행을 조회하면 여전히 한 행이고 금액은 30000입니다. 별도 이력 설계 없이 이 조회만으로 이전 금액을 알 수는 없습니다.\"",
+    "after": "\"원천 DB(source_rows)는 덮어써졌기 때문에 여전히 1행이고 금액만 30000으로 바뀌어 있습니다. 즉 원천 DB만 보면 원래 얼마였는지 알 수 없습니다.\"",
+    "reason": "맞는 원문 현재 원천 1행·금액 변경 대비 복원",
+    "applied": true
+  },
+  {
+    "original_paragraph": 63,
+    "original": "\"하지만 Kafka와 Bronze를 보세요. 아까 op가 c였던 오프셋 바로 다음 오프셋에 op는 u, before.amount는 20000, after.amount는 30000인 이벤트가 새로 쌓였습니다. 원천 테이블에 REPLICA IDENTITY FULL을 걸어두었기 때문에 바뀌기 전 금액인 20000이 before에 정확히 남았습니다 (PostgreSQL ALTER TABLE 공식 문서).\"",
+    "before": "\"Kafka와 Bronze에는 op=u, before_amount=20000, after_amount=30000인 새 이벤트가 남았습니다. 이번 원천은 REPLICA IDENTITY FULL로 이전 금액까지 관찰합니다. 모든 기본 설정에서 같은 before가 나온다는 뜻은 아닙니다. offset 순서는 같은 토픽·파티션 안에서 비교하고 바로 다음 번호라고 단정하지 않습니다. source.lsn도 전역 고유 이벤트 번호가 아닙니다.\"",
+    "after": "\"하지만 Kafka와 Bronze를 보세요. 아까 op가 c였던 이벤트보다 뒤쪽 오프셋에 op는 u, before.amount는 20000, after.amount는 30000인 이벤트가 새로 쌓였습니다. 원천 테이블에 REPLICA IDENTITY FULL을 걸어두었기 때문에 바뀌기 전 금액인 20000이 before에 정확히 남았습니다.\"",
+    "reason": "원문 이력 관찰·FULL 설명 복원; 연속 번호 단정만 수정, 공식 링크 유지",
+    "applied": true,
+    "initial_after": "\"하지만 Kafka와 Bronze를 보세요. 아까 op가 c였던 오프셋 같은 토픽·파티션의 더 큰 오프셋에 op는 u, before.amount는 20000, after.amount는 30000인 이벤트가 새로 쌓였습니다. 원천 테이블에 REPLICA IDENTITY FULL을 걸어두었기 때문에 바뀌기 전 금액인 20000이 before에 정확히 남았습니다.\""
+  },
+  {
+    "original_paragraph": 64,
+    "original": "\"원천 DB는 1행이지만, 추가 전용(append-only)인 Bronze 테이블에는 이제 c와 u 두 개의 이력이 남았습니다.\"",
+    "before": "\"원천은 한 행이지만 이번 환불 키의 Bronze에는 c와 u 두 변경 이력이 남습니다. 같은 PK의 정상 이력과 같은 수집 위치의 중복 저장을 구분하세요.\"",
+    "after": "\"원천 DB는 1행이지만, 추가 전용(append-only)인 Bronze 테이블에는 이번 환불의 c와 u 두 개의 이력이 남았습니다.\"",
+    "reason": "원문 원천 한 행 대 두 이력 대비 복원; 현재 환불 키로 범위 한정",
+    "applied": true
+  },
+  {
+    "original_paragraph": 75,
+    "original": "원천 0행 대 Bronze 3행: \"원천 DB(source_rows)에서 조회하면 이제 빈 배열, 즉 0행입니다. 만약 updated_at 배치로 조회했다면 이 환불이 삭제됐다는 사실조차 모릅니다. 하지만 Bronze에는 방금 들어온 op는 d, before.amount는 30000, after는 null인 레코드까지 합쳐서 c, u, d 3건의 이력이 모두 남아 있습니다.\"",
+    "before": "원천 0행 대 이번 키의 Bronze 3건: \"원천의 이 환불은 0행입니다. 삭제 상태를 별도로 남기지 않는 updated_at 조회만으로 물리 삭제를 알기 어렵습니다. 삭제 이벤트는 op=d, before_amount=30000, after_amount=None이고 이번 환불 키의 Bronze에는 c/u/d 세 이력이 남습니다. 전체 Bronze 테이블이 세 행이라는 뜻은 아닙니다.\"",
+    "after": "원천 0행 대 이번 환불의 Bronze 3건: \"원천 DB(source_rows)에서 조회하면 이제 0행입니다. 만약 updated_at 조건으로 바뀐 현재 행만 읽는 배치였다면 이 환불이 물리 삭제됐다는 사실은 가져오지 못합니다. 하지만 Bronze에는 방금 들어온 op는 d, before.amount는 30000, after는 null인 레코드까지 합쳐서 이번 환불 키의 c, u, d 3건 이력이 모두 남아 있습니다.\"",
+    "reason": "원문 삭제 장면·이력 대비 복원; 숫자 source_rows·물리 삭제·이번 키 한정",
+    "applied": true
+  },
+  {
+    "original_paragraph": 76,
+    "original": "Tombstone 제외 확인: \"kafka_records 맨 마지막 줄을 보세요. op가 d인 레코드 바로 다음 오프셋에 tombstone이 true이고 op가 null인 레코드가 하나 더 있습니다. 이게 아까 배운 Kafka Log Compaction용 빈 메시지입니다. 그래서 Kafka 전체 메시지는 4개지만, 우리 Flink SQL이 WHERE payload IS NOT NULL 조건으로 이 빈 껍데기를 걸러냈기 때문에 Bronze에는 정확히 3건만 들어갔습니다.\"",
+    "before": "Tombstone 제외: \"Kafka 출력에서 같은 키의 value=null tombstone을 확인하고 요약의 kafka_tombstones와 history_ops를 봅니다. 이번 키에 c/u/d와 tombstone이 하나씩 관찰되면 Kafka는 네 메시지, Bronze는 non-null 세 이벤트입니다. 다른 키나 전체 토픽 메시지 수와 섞지 마세요.\"",
+    "after": "Tombstone 제외 확인: \"방금 본 Kafka 출력에서 같은 환불 키의 tombstone 레코드를 보세요. op가 d인 삭제 이벤트 뒤에 value가 null인 메시지가 하나 더 있습니다. 이게 아까 배운 Kafka Log Compaction용 메시지입니다. 그래서 이번 환불 키의 Kafka 메시지는 4개지만, 우리 Flink SQL이 WHERE payload IS NOT NULL 조건으로 이 null 메시지를 걸러냈기 때문에 Bronze에는 정확히 3건만 들어갔습니다.\"",
+    "reason": "원문 Log Compaction·null 필터 메커니즘 복원; 위치 단정 제거·같은 키 한정",
+    "applied": true
+  },
+  {
+    "original_paragraph": 77,
+    "original": "타임스탬프와 체크포인트 커밋: \"마지막 삭제 레코드의 kafka_ts(Kafka 생성 시각)와 ingested_at(Flink 처리 시각)을 여러분 체크리스트에 적어보세요. Flink가 읽은 시각 직후 바로 조회되는 것이 아니라, Flink Checkpoint가 완료되어 Iceberg Catalog의 metadata.json 포인터가 바뀐 시점부터 Spark에서 조회됩니다.\"",
+    "before": "지연·커밋: \"DELETE 요약의 kafka_ts, ingested_at, wait_observed_seconds 한 세트를 기록하세요. 각각 Kafka timestamp 메타데이터, Flink 처리 시각, wait 시작부터 첫 Bronze 관찰까지의 시간입니다. 원천 commit부터 마트까지의 전체 지연은 아닙니다. wait --evidence가 없으면 관찰 기록은 미기록입니다. 체크포인트 뒤 Iceberg 커밋 성공과 새 조회까지 확인해야 합니다. DML과 스냅샷도 항상 1:1은 아닙니다.\"",
+    "after": "타임스탬프와 체크포인트 커밋: \"마지막 삭제 레코드의 kafka_ts(Kafka 레코드 시각), ingested_at(Flink 처리 시각), wait_observed_seconds를 여러분 체크리스트에 적어보세요. Flink가 읽었다고 바로 조회되는 건 아닙니다. Checkpoint가 완료된 뒤 Iceberg 커밋까지 성공해서 Catalog의 현재 메타데이터 포인터가 바뀌어야 새 조회에서 확인할 수 있습니다. wait 값은 명령을 시작한 뒤 Bronze에서 처음 확인하기까지의 시간입니다. 이 값들만으로 원천 commit부터 분석 마트까지의 정확한 전체 지연을 계산할 수는 없습니다.\"",
+    "reason": "원문 관찰·기록·조회 설명 순서 복원; timestamp·커밋·지연 정의만 보완",
+    "applied": true
+  },
+  {
+    "original_paragraph": 63,
+    "stage": "final wording follow-up",
+    "before": "아까 op가 c였던 오프셋 같은 토픽·파티션의 더 큰 오프셋에",
+    "after": "아까 op가 c였던 이벤트보다 뒤쪽 오프셋에",
+    "reason": "UPDATE 멘트 연결을 자연스럽게 수정",
+    "applied": true
+  },
+  {
+    "original_paragraph": 73,
+    "stage": "final wording follow-up",
+    "before": "지연 한 세트까지 기록하게 합니다",
+    "after": "Kafka 시각·Flink 처리 시각·wait 값을 함께 기록하게 합니다",
+    "reason": "DELETE 화면에서 기록할 세 값 명시",
+    "applied": true
+  }
+]

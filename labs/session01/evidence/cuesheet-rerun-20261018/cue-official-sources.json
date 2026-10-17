@@ -1,0 +1,68 @@
+[
+  {
+    "claim": "Flink checkpoint 완료와 Iceberg commit 성공을 구분하고 실제 조회까지 확인",
+    "source": "Iceberg 1.10.0 Flink Writes — Metrics",
+    "url": "https://iceberg.apache.org/docs/1.10.0/flink-writes/#metrics",
+    "verified": "공식 문서에서 checkpoint가 성공해도 Iceberg commit이 실패할 수 있음을 확인."
+  },
+  {
+    "claim": "INSERT INTO로 append하며 본 실습이 Flink upsert가 아님",
+    "source": "Iceberg 1.10.0 Flink Writes — INSERT INTO",
+    "url": "https://iceberg.apache.org/docs/1.10.0/flink-writes/#insert-into",
+    "verified": "공식 INSERT INTO 설명에서 streaming append 방식 확인. 본 실습의 append-only 선택 자체는 저장소 SQL에 근거."
+  },
+  {
+    "claim": "관계형 DB를 사용하는 JDBC Catalog와 저장소 파일 역할 구분",
+    "source": "Iceberg 1.10.0 JDBC Catalog",
+    "url": "https://iceberg.apache.org/docs/1.10.0/jdbc/",
+    "verified": "관계형 DB와 JDBC를 이용한 catalog 관리 및 atomic commit 조건 확인."
+  },
+  {
+    "claim": "table metadata·snapshot·manifest·data file 관계",
+    "source": "Iceberg Table Spec — v2 관련 설명",
+    "url": "https://iceberg.apache.org/spec/",
+    "verified": "현행 규격 중 v2에 적용되는 설명을 사용. v4의 다른 metadata tree를 이 실습에 적용하지 않음."
+  },
+  {
+    "claim": "raw format은 원문 value를 단일 컬럼으로 읽음",
+    "source": "Flink 1.20 Raw Format",
+    "url": "https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/connectors/table/formats/raw/",
+    "verified": "raw 단일 컬럼·STRING 예제 확인. tombstone 필터링과 Bronze 컬럼 선택은 실습 SQL에 근거."
+  },
+  {
+    "claim": "topic·partition·offset·timestamp는 Kafka connector metadata",
+    "source": "Flink 1.20 Kafka — Available Metadata",
+    "url": "https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/connectors/table/kafka/#available-metadata",
+    "verified": "offset은 파티션 내부 위치, timestamp는 Kafka 레코드 timestamp이며 source commit 또는 Iceberg commit 시각이 아님."
+  },
+  {
+    "claim": "c/u/d/r, snapshot read, FULL 이전 값, delete와 tombstone 구분",
+    "source": "Debezium 3.2 PostgreSQL connector",
+    "url": "https://debezium.io/documentation/reference/3.2/connectors/postgresql.html",
+    "verified": "r은 snapshot read, FULL은 이전 모든 열 값, delete 뒤 같은 key의 null value tombstone을 확인. tombstones.on.delete 설정에 따라 동작."
+  },
+  {
+    "claim": "REPLICA IDENTITY FULL은 이전 행 모든 열 값을 WAL에 남김",
+    "source": "PostgreSQL 17 ALTER TABLE — REPLICA IDENTITY",
+    "url": "https://www.postgresql.org/docs/17/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY",
+    "verified": "FULL과 DEFAULT의 범위 차이 확인. 모든 CDC에 FULL이 필수라는 설명을 사용하지 않음."
+  },
+  {
+    "url": "https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/ops/monitoring/checkpoint_monitoring/",
+    "http_status": 200,
+    "title": "Monitoring Checkpointing | Apache Flink",
+    "claims": [
+      "Failed is total since job start",
+      "Latest completed checkpoint"
+    ]
+  },
+  {
+    "url": "https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/ops/rest_api/",
+    "http_status": 200,
+    "title": "REST API | Apache Flink",
+    "claims": [
+      "GET /jobs/:jobid/checkpoints",
+      "counts.completed and counts.failed"
+    ]
+  }
+]

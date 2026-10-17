@@ -1,0 +1,30 @@
+{
+  "changed_paragraphs": 22,
+  "planned_edits": 23,
+  "all_planned_edits_applied": true,
+  "paragraph_count_unchanged": true,
+  "code_blocks": 10,
+  "code_blocks_exactly_unchanged": true,
+  "logical_commands": 33,
+  "continuation_lines": 8,
+  "bash_syntax_ok": true,
+  "official_link_labels": 14,
+  "official_documents": 9,
+  "official_link_text_and_target_exactly_unchanged": true,
+  "pdf_pages": 6,
+  "pdf_all_official_link_targets_present": true,
+  "step0_exactly_unchanged": true,
+  "verbatim_original_ment_preserved": {
+    "20": true,
+    "21": true,
+    "37": true,
+    "49": true,
+    "51": true,
+    "62": true
+  },
+  "pdf_layout_checked": true,
+  "pdf_layout_result": "6쪽 전체 렌더 검토: 내용 잘림·겹침 없음. 기존 문서·코드블록 서체와 구성을 유지.",
+  "final_two_tweaks_changed_paragraphs": 2,
+  "final_tweak_63": true,
+  "final_tweak_73": true
+}

@@ -1,0 +1,132 @@
+{
+  "namespace": "s01-live-1018033710",
+  "stage": "update",
+  "source_rows": [
+    {
+      "refund_id": "s01-live-1018033710-r1",
+      "payment_id": "s01-live-1018033710-p1",
+      "amount": 30000,
+      "status": "success"
+    }
+  ],
+  "kafka_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 34,
+      "key": {
+        "refund_id": "s01-live-1018033710-r1"
+      },
+      "tombstone": false,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-live-1018033710-r1",
+        "payment_id": "s01-live-1018033710-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26877440,
+      "source_ts_ms": 1792262242839,
+      "connector_ts_ms": 1792262242919
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 35,
+      "key": {
+        "refund_id": "s01-live-1018033710-r1"
+      },
+      "tombstone": false,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-live-1018033710-r1",
+        "payment_id": "s01-live-1018033710-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-live-1018033710-r1",
+        "payment_id": "s01-live-1018033710-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26879896,
+      "source_ts_ms": 1792262312243,
+      "connector_ts_ms": 1792262312610
+    }
+  ],
+  "bronze_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 34,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-live-1018033710-r1",
+        "payment_id": "s01-live-1018033710-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26877440,
+      "source_ts_ms": 1792262242839,
+      "connector_ts_ms": 1792262242919,
+      "kafka_ts": "2026-10-17 18:37:23.082000",
+      "ingested_at": "2026-10-17 18:37:23.095000"
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 35,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-live-1018033710-r1",
+        "payment_id": "s01-live-1018033710-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-live-1018033710-r1",
+        "payment_id": "s01-live-1018033710-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26879896,
+      "source_ts_ms": 1792262312243,
+      "connector_ts_ms": 1792262312610,
+      "kafka_ts": "2026-10-17 18:38:32.792000",
+      "ingested_at": "2026-10-17 18:38:32.800000"
+    }
+  ],
+  "checks": [
+    {
+      "op": "c",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        34
+      ],
+      "bronze_copies": 1
+    },
+    {
+      "op": "u",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        35
+      ],
+      "bronze_copies": 1
+    }
+  ],
+  "passed": true,
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee",
+  "wait_observation": {
+    "namespace": "s01-live-1018033710",
+    "event": "correction",
+    "bronze_visible": true,
+    "wait_observed_seconds": 7.04,
+    "wait_started_at": "2026-10-17T18:38:32.971502+00:00",
+    "bronze_observed_at": "2026-10-17T18:38:39.822921+00:00"
+  }
+}

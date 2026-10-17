@@ -1,0 +1,8 @@
+{
+  "namespace": "s01-live-1018033710",
+  "event": "delete",
+  "bronze_visible": true,
+  "wait_observed_seconds": 4.75,
+  "wait_started_at": "2026-10-17T18:39:42.490935+00:00",
+  "bronze_observed_at": "2026-10-17T18:39:47.024680+00:00"
+}

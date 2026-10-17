@@ -1,0 +1,59 @@
+{
+  "observed_at": "2026-10-17T18:43:43.703084+00:00",
+  "job_id": "9018b8fcacb3897008efadadd526115f",
+  "checkpoint_counts": {
+    "restored": 1,
+    "total": 11,
+    "in_progress": 0,
+    "completed": 10,
+    "failed": 1
+  },
+  "latest_completed": {
+    "className": "completed",
+    "id": 71291,
+    "status": "COMPLETED",
+    "is_savepoint": false,
+    "savepointFormat": null,
+    "trigger_timestamp": 1792262616960,
+    "latest_ack_timestamp": 1792262616999,
+    "checkpointed_size": 1181,
+    "state_size": 1181,
+    "end_to_end_duration": 39,
+    "alignment_buffered": 0,
+    "processed_data": 0,
+    "persisted_data": 0,
+    "num_subtasks": 2,
+    "num_acknowledged_subtasks": 2,
+    "checkpoint_type": "CHECKPOINT",
+    "tasks": {},
+    "external_path": "file:/opt/flink/state/checkpoints/9018b8fcacb3897008efadadd526115f/chk-71291",
+    "discarded": false
+  },
+  "restored": {
+    "id": 71281,
+    "restore_timestamp": 1792262518372,
+    "is_savepoint": true,
+    "external_path": "file:/opt/flink/state/savepoints/savepoint-a66c9b-d6c3070c078a"
+  },
+  "connector_state": "RUNNING",
+  "connector_task_states": [
+    "RUNNING"
+  ],
+  "row_counts": {
+    "bronze.cdc_events": 53,
+    "silver.orders": 11,
+    "silver.payments": 11,
+    "silver.refunds": 9,
+    "gold.fct_order_settlement": 11,
+    "gold.mart_daily_settlement": 4
+  },
+  "bronze_identity_count": 53,
+  "bronze_row_count": 53,
+  "bronze_duplicate_positions": 0,
+  "bronze_sha256": "b4202f3de89585a0ce18c28082b59cb74f8776858fc46ab4c9a0c4cfbc969d98",
+  "bronze_metadata_retention": {
+    "write.metadata.delete-after-commit.enabled": "true",
+    "write.metadata.previous-versions-max": "100"
+  },
+  "vm_free_gib": 22.69
+}

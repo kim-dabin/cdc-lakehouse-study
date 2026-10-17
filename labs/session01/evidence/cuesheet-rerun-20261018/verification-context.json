@@ -1,0 +1,15 @@
+{
+  "runtime_start_revision": "176d5bc9f423f19b7cc46e6713f0e13ebba30d70",
+  "preflight_verified_blob": "3bb441f60dc558217ee4ef4efd9105422bd09316",
+  "verified_cue_commands_sha256": "30f1dfec7ab9f2ce8b3df92ba1e3ecc3409ab6dc58067b9f1297400a2389c8c6",
+  "core_case": "s01-live-1018033710",
+  "resumed_case": "s01-resume-1018034344",
+  "timezone": "Asia/Seoul",
+  "execution_date": "2026-10-18",
+  "notes": "Startup checkpoint cancellation retained in cumulative count; runtime checks distinguish baseline and new failures.",
+  "bronze_hash_schemes": {
+    "core-result.json": "Spark SQL sha2 over sorted JSON row strings",
+    "runtime-*-restart.json": "Python sha256 of JSON-serialized rows sorted by topic/partition/offset",
+    "comparison_rule": "Compare the restart snapshots with each other, not across the two serialization schemes."
+  }
+}

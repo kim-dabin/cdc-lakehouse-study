@@ -2,7 +2,7 @@
 
 모든 실행 명령은 **맥미니의 프로젝트 폴더**에서 사용한다. 학생은 로컬에서 공통 예제 SQL·이벤트 예측과 수집 관찰 기록을 작성하며 학생별 파일을 서버에서 실행하지 않는다. 개인 설계는 3회차에 확정한다. 핵심 시연은 같은 환불 PK의 INSERT·UPDATE·DELETE를 원천, Kafka, Iceberg Bronze에서 대조한다. Silver·Gold 갱신은 이번 핵심 시연에서 실행하지 않는다.
 
-[2026-10-18 실제 실행·재기동 확인 기록](classcheck-20261018.md).
+[수정 큐시트 재실행·재기동 확인 기록](cuesheet-rerun-20261018.md). 앞선 실행은 [2026-10-18 점검 기록](classcheck-20261018.md)에 보관한다.
 
 ## 최종 강의안과 연결
 
@@ -41,6 +41,8 @@ cd ~/bootcamp/cdc-lakehouse-study
 첫 설치·이미지 변경은 수업 전에 `./scripts/bootstrap.sh --build`로 완료한다. 수업 당일 `--no-build`는 로컬 이미지만 사용하며 빌드·이미지 pull을 하지 않는다. 이미지가 없으면 중단하므로 당일 새로 설치하지 않는다.
 
 `ready: true`와 실제 조회를 확인한다. VM 최소 여유 2GiB, 5GiB 이상 권장. bootstrap은 기존 복구 지점에서 시작하며 준비 과정에서 pipeline.py도 실행한다. 이 준비 동작과 수업 중 c/u/d 수집 시연을 구분한다. 초기 설치는 120분에 포함하지 않는다. 복구 지점 없이 작업이 사라졌다면 임의로 `.runtime/flink-state.json`을 삭제하지 않는다.
+
+preflight는 현재 작업의 모든 태스크가 RUNNING이고 체크포인트가 최소 한 번 완료될 때까지 최대 45초 기다린 뒤, 데이터 조회 중 새 체크포인트 실패가 없었는지 확인한다. `checkpoint_failures_during_check: 0`과 `latest_completed_checkpoint_id`도 확인한다. 기동 직후 태스크 초기화 중 취소된 체크포인트는 누적 `checkpoint_counts.failed`에 남을 수 있다. 누적 숫자를 지우거나 무조건 무시하지 말고 최근 완료 기록과 실패 증가 여부를 함께 본다. 완료 기록이 없거나 점검 중 실패가 늘면 시연을 시작하지 않는다. 누적 통계의 의미는 [Flink 1.20 Checkpoint Monitoring](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/ops/monitoring/checkpoint_monitoring/), 응답 항목은 [Flink 1.20 REST API](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/ops/rest_api/)를 참고한다.
 
 강사 노트북에서 Flink 화면을 보여주려면 별도 터미널에서 아래 터널을 열고 `http://localhost:28081`로 접속한다.
 

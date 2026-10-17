@@ -1,0 +1,8 @@
+{
+  "namespace": "s01-resume-1018034344",
+  "event": "payment",
+  "bronze_visible": true,
+  "wait_observed_seconds": 2.66,
+  "wait_started_at": "2026-10-17T18:43:45.627165+00:00",
+  "bronze_observed_at": "2026-10-17T18:43:48.107460+00:00"
+}

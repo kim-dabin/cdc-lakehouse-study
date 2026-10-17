@@ -1,0 +1,19 @@
+{
+  "core_case": "s01-live-1018033710",
+  "restart_case": "s01-resume-1018034344",
+  "bronze_before_restart": 53,
+  "bronze_after_restart": 53,
+  "bronze_after_resume": 58,
+  "bronze_hash_unchanged_at_restart": true,
+  "image_ids_unchanged": true,
+  "restored_savepoint_matches": true,
+  "previous_case_passed": true,
+  "resumed_cud_passed": true,
+  "checkpoint_failures": 1,
+  "checkpoint_failures_at_resume_start": 1,
+  "checkpoint_failures_during_resumed_demo": 0,
+  "vm_free_gib": 22.67,
+  "final_savepoint": "file:/opt/flink/state/savepoints/savepoint-9018b8-0cfdd8c5a209",
+  "cdc_project_stopped": true,
+  "unrelated_de7_running": true
+}

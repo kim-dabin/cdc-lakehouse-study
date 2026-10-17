@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker></defs><rect width="1440" height="1010" fill="#f5f7fb"/><style>text{font-family:Arial,'Apple SD Gothic Neo','Noto Sans CJK KR',sans-serif} .title{font-size:30px;font-weight:700;fill:#14243a}.sub{font-size:17px;fill:#52637b}.label{font-size:20px;font-weight:700;fill:#14243a}.body{font-size:16px;fill:#44566e}.small{font-size:14px;fill:#52637b}</style>
-<text x="42" y="54" class="title" text-anchor="start">1회차 프로젝트 — 결제 변경을 순결제액으로</text>
-<text x="42" y="84" class="sub" text-anchor="start">강사가 맥미니에서 실행 · 학생은 SQL과 개인 프로젝트 설계서 작성</text>
+<text x="42" y="54" class="title" text-anchor="start">1회차 공통 예제 — 변경 데이터 수집 확인</text>
+<text x="42" y="84" class="sub" text-anchor="start">강사가 맥미니에서 실행 · 학생은 공통 SQL과 수집 대조 기록 작성</text>
 <rect x="42" y="115" width="330" height="90" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="60" y="147" class="label" text-anchor="start">학생 노트북</text>
-<text x="60" y="175" class="body" text-anchor="start">원천 SQL · 개인 프로젝트 설계</text>
+<text x="60" y="175" class="body" text-anchor="start">공통 SQL · 이벤트 예측·관찰 기록</text>
 <rect x="460" y="115" width="330" height="90" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="478" y="147" class="label" text-anchor="start">GitHub</text>
-<text x="478" y="175" class="body" text-anchor="start">실습 자료 · 개인 제출물</text>
+<text x="478" y="175" class="body" text-anchor="start">실습 자료 · 제출 양식</text>
 <path d="M372,160 L450,160" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <text x="845" y="149" class="body" text-anchor="start">강사 노트북 → SSH → Mac mini</text>
-<text x="845" y="176" class="small" text-anchor="start">실행 화면과 계층별 조회 결과 공유</text>
+<text x="845" y="176" class="small" text-anchor="start">실행 화면과 수집 대조 결과 공유</text>
 <rect x="28" y="238" width="1384" height="655" rx="20" fill="#edf3fb" stroke="#b8cbe2"/>
 <text x="52" y="273" class="label" text-anchor="start">Mac mini  /  Lima Linux ARM64  /  Docker Compose</text>
 <text x="52" y="301" class="small" text-anchor="start">전용 VM: CPU 6개 · RAM 10 GiB     |     외부 공개 없이 loopback + SSH 터널</text>
@@ -25,7 +25,7 @@
 <rect x="608" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="626" y="361" class="label" text-anchor="start">Flink SQL</text>
 <text x="626" y="389" class="body" text-anchor="start">CDC 원문 + 전달 메타데이터</text>
-<text x="626" y="412" class="body" text-anchor="start">체크포인트 → Iceberg 커밋</text>
+<text x="626" y="412" class="body" text-anchor="start">체크포인트 후 커밋 확인</text>
 <rect x="886" y="329" width="236" height="113" rx="14" fill="#e3efff" stroke="#d6dfec"/>
 <text x="904" y="361" class="label" text-anchor="start">Iceberg Bronze</text>
 <text x="904" y="389" class="body" text-anchor="start">추가 전용 변경 이력</text>
@@ -35,7 +35,7 @@
 <path d="M844,385 L878,385" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <rect x="52" y="492" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="70" y="524" class="label" text-anchor="start">마트 갱신</text>
-<text x="70" y="552" class="body" text-anchor="start">1회차: 강사가 수동 실행</text>
+<text x="70" y="552" class="body" text-anchor="start">1회차: 갱신 실행 안 함</text>
 <text x="70" y="575" class="body" text-anchor="start">이후: Airflow 주기 실행</text>
 <rect x="330" y="492" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="348" y="524" class="label" text-anchor="start">Spark SQL</text>
@@ -52,7 +52,7 @@
 <rect x="1158" y="492" width="226" height="113" rx="14" fill="#dcf4ea" stroke="#d6dfec"/>
 <text x="1176" y="524" class="label" text-anchor="start">Iceberg Gold</text>
 <text x="1176" y="552" class="body" text-anchor="start">분석 마트 · SQL 조회</text>
-<text x="1176" y="575" class="body" text-anchor="start">10만 → 8만 → 7만</text>
+<text x="1176" y="575" class="body" text-anchor="start">후속 회차에서 구현·갱신</text>
 <path d="M288,548 L322,548" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
 <path d="M566,548 L600,548" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <path d="M844,548 L878,548" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
@@ -60,19 +60,19 @@
 <path d="M1004,442 L1004,466 L448,466 L448,484" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <rect x="52" y="659" width="400" height="112" rx="14" fill="#fff6e8" stroke="#d6dfec"/>
 <text x="70" y="691" class="label" text-anchor="start">Iceberg JDBC Catalog</text>
-<text x="70" y="719" class="body" text-anchor="start">별도 PostgreSQL에 테이블 위치 관리</text>
+<text x="70" y="719" class="body" text-anchor="start">catalog-db: 현재 메타데이터 위치 관리</text>
 <text x="70" y="742" class="body" text-anchor="start">Flink · Spark가 같은 카탈로그 사용</text>
 <rect x="490" y="659" width="450" height="112" rx="14" fill="#fff6e8" stroke="#d6dfec"/>
 <text x="508" y="691" class="label" text-anchor="start">MinIO · S3 호환 저장소</text>
 <text x="508" y="719" class="body" text-anchor="start">Bronze / Silver / Gold의 Parquet + metadata</text>
-<text x="508" y="742" class="body" text-anchor="start">데이터와 카탈로그 메타데이터는 별도 저장</text>
+<text x="508" y="742" class="body" text-anchor="start">파일은 MinIO · 포인터는 catalog-db</text>
 <rect x="978" y="659" width="406" height="112" rx="14" fill="#fff6e8" stroke="#d6dfec"/>
 <text x="996" y="691" class="label" text-anchor="start">Flink checkpoint 볼륨</text>
 <text x="996" y="719" class="body" text-anchor="start">소스 위치 · 처리 상태 보관</text>
-<text x="996" y="742" class="body" text-anchor="start">TaskManager 복구 실습</text>
-<text x="52" y="814" class="label" text-anchor="start">오늘은 Bronze와 Gold의 반영 시점을 나눠 확인</text>
-<text x="52" y="844" class="body" text-anchor="start">원천 SQL 실행 → Bronze 조회 → 수동 마트 갱신 → 이번 주문의 기대값 비교</text>
-<text x="52" y="872" class="small" text-anchor="start">학생 작성: 원천 집계 SQL · 지표 정의 · 테이블 관계 · DDL · 변경 시나리오</text>
-<text x="42" y="937" class="label" text-anchor="start">오늘 확인: 결제 100,000원 → 환불 20,000원 → 환불을 30,000원으로 정정</text>
-<text x="42" y="970" class="sub" text-anchor="start">주문 예제는 참고 구현입니다. 수강생은 자기 도메인의 테이블 2–3개와 지표 하나를 설계합니다.</text>
+<text x="996" y="742" class="body" text-anchor="start">복구 실습은 후속 회차</text>
+<text x="52" y="814" class="label" text-anchor="start">오늘은 원천 변경과 Kafka·Bronze 수집 결과를 대조</text>
+<text x="52" y="844" class="body" text-anchor="start">같은 환불의 INSERT → UPDATE → DELETE → 원천·Kafka·Bronze 내용과 수집 위치 확인</text>
+<text x="52" y="872" class="small" text-anchor="start">학생 작성: 공통 SELECT · 변경 이벤트 예측 · before/after·offset·copies 관찰 기록</text>
+<text x="42" y="937" class="label" text-anchor="start">오늘 확인: 환불 20,000원 생성 → 30,000원 정정 → 환불 행 삭제</text>
+<text x="42" y="970" class="sub" text-anchor="start">결제 100,000원은 준비 데이터입니다. Silver·Gold 갱신은 후속 회차, 개인 프로젝트 설계는 3회차에 진행합니다.</text>
 </svg>

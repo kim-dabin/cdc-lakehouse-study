@@ -10,5 +10,11 @@
     "warn": 0,
     "error": 0,
     "skip": 0
+  },
+  "confirmation": {
+    "pass": 8,
+    "warn": 0,
+    "error": 0,
+    "skip": 0
   }
 }

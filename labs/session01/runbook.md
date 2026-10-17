@@ -39,14 +39,16 @@ cat labs/session01/sql/01-payment.sql
 
 `unique`를 매 수업·리허설마다 다른 문자열로 바꾼다. 허용 형식은 `s01-`과 소문자·숫자·하이픈. 주문 `CASE_ID-o1`, 결제 `CASE_ID-p1`, 환불 `CASE_ID-r1`을 사용한다. 준비 단계에는 주문·결제가 생기며 핵심 비교에서는 환불 토픽과 키만 필터링한다. 기존 키를 지워 초기화하지 않는다.
 
+원천 커밋 직후에는 아직 Kafka에 이벤트가 없어 빈 목록이 나올 수 있다. 수업에서는 아래처럼 wait 뒤 Kafka 원문을 조회해 최신 op를 보여준다. PPT 부록의 대기 전 Kafka 조회는 도착 전일 수 있으므로 강사 시연은 이 실행 순서를 따른다.
+
 ## 2. INSERT: 원천 한 행과 op=c
 
 ```bash
 cat labs/session01/sql/02-refund.sql
 ./labs/session01/lab.sh "$CASE_ID" refund
 ./labs/session01/lab.sh "$CASE_ID" source-rows
-./labs/session01/lab.sh "$CASE_ID" kafka
 ./labs/session01/lab.sh "$CASE_ID" wait --event refund --evidence
+./labs/session01/lab.sh "$CASE_ID" kafka
 ./labs/session01/lab.sh "$CASE_ID" collect-check --stage insert --summary --evidence
 ```
 
@@ -58,8 +60,8 @@ cat labs/session01/sql/02-refund.sql
 cat labs/session01/sql/03-correction.sql
 ./labs/session01/lab.sh "$CASE_ID" correction
 ./labs/session01/lab.sh "$CASE_ID" source-rows
-./labs/session01/lab.sh "$CASE_ID" kafka
 ./labs/session01/lab.sh "$CASE_ID" wait --event correction --evidence
+./labs/session01/lab.sh "$CASE_ID" kafka
 ./labs/session01/lab.sh "$CASE_ID" collect-check --stage update --summary --evidence
 ```
 
@@ -73,8 +75,8 @@ cat labs/session01/sql/03-correction.sql
 cat labs/session01/sql/04-delete-optional.sql
 ./labs/session01/lab.sh "$CASE_ID" delete
 ./labs/session01/lab.sh "$CASE_ID" source-rows
-./labs/session01/lab.sh "$CASE_ID" kafka
 ./labs/session01/lab.sh "$CASE_ID" wait --event delete --evidence
+./labs/session01/lab.sh "$CASE_ID" kafka
 ./labs/session01/lab.sh "$CASE_ID" collect-check --stage delete --summary --evidence
 ```
 

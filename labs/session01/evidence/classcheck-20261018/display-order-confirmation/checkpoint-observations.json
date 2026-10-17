@@ -1,0 +1,174 @@
+[
+  {
+    "label": "before",
+    "observed_at": "2026-10-17T17:46:23.607108+00:00",
+    "job_id": "de76cfe32ba4d1b79ffd193d8609774b",
+    "counts": {
+      "restored": 1,
+      "total": 1,
+      "in_progress": 0,
+      "completed": 1,
+      "failed": 0
+    },
+    "latest": {
+      "completed": {
+        "className": "completed",
+        "id": 71248,
+        "status": "COMPLETED",
+        "is_savepoint": false,
+        "savepointFormat": null,
+        "trigger_timestamp": 1792259180642,
+        "latest_ack_timestamp": 1792259180903,
+        "checkpointed_size": 1181,
+        "state_size": 1181,
+        "end_to_end_duration": 261,
+        "alignment_buffered": 0,
+        "processed_data": 0,
+        "persisted_data": 0,
+        "num_subtasks": 2,
+        "num_acknowledged_subtasks": 2,
+        "checkpoint_type": "CHECKPOINT",
+        "tasks": {},
+        "external_path": "file:/opt/flink/state/checkpoints/de76cfe32ba4d1b79ffd193d8609774b/chk-71248",
+        "discarded": false
+      },
+      "savepoint": null,
+      "failed": null,
+      "restored": {
+        "id": 71247,
+        "restore_timestamp": 1792259171542,
+        "is_savepoint": true,
+        "external_path": "file:/opt/flink/state/savepoints/savepoint-2d39a1-31628b300c9d"
+      }
+    }
+  },
+  {
+    "label": "insert-end",
+    "observed_at": "2026-10-17T17:46:43.217669+00:00",
+    "job_id": "de76cfe32ba4d1b79ffd193d8609774b",
+    "counts": {
+      "restored": 1,
+      "total": 3,
+      "in_progress": 0,
+      "completed": 3,
+      "failed": 0
+    },
+    "latest": {
+      "completed": {
+        "className": "completed",
+        "id": 71250,
+        "status": "COMPLETED",
+        "is_savepoint": false,
+        "savepointFormat": null,
+        "trigger_timestamp": 1792259200277,
+        "latest_ack_timestamp": 1792259200310,
+        "checkpointed_size": 3802,
+        "state_size": 3802,
+        "end_to_end_duration": 33,
+        "alignment_buffered": 0,
+        "processed_data": 0,
+        "persisted_data": 0,
+        "num_subtasks": 2,
+        "num_acknowledged_subtasks": 2,
+        "checkpoint_type": "CHECKPOINT",
+        "tasks": {},
+        "external_path": "file:/opt/flink/state/checkpoints/de76cfe32ba4d1b79ffd193d8609774b/chk-71250",
+        "discarded": false
+      },
+      "savepoint": null,
+      "failed": null,
+      "restored": {
+        "id": 71247,
+        "restore_timestamp": 1792259171542,
+        "is_savepoint": true,
+        "external_path": "file:/opt/flink/state/savepoints/savepoint-2d39a1-31628b300c9d"
+      }
+    }
+  },
+  {
+    "label": "update-end",
+    "observed_at": "2026-10-17T17:46:53.327639+00:00",
+    "job_id": "de76cfe32ba4d1b79ffd193d8609774b",
+    "counts": {
+      "restored": 1,
+      "total": 4,
+      "in_progress": 0,
+      "completed": 4,
+      "failed": 0
+    },
+    "latest": {
+      "completed": {
+        "className": "completed",
+        "id": 71251,
+        "status": "COMPLETED",
+        "is_savepoint": false,
+        "savepointFormat": null,
+        "trigger_timestamp": 1792259210093,
+        "latest_ack_timestamp": 1792259210138,
+        "checkpointed_size": 3802,
+        "state_size": 3802,
+        "end_to_end_duration": 45,
+        "alignment_buffered": 0,
+        "processed_data": 0,
+        "persisted_data": 0,
+        "num_subtasks": 2,
+        "num_acknowledged_subtasks": 2,
+        "checkpoint_type": "CHECKPOINT",
+        "tasks": {},
+        "external_path": "file:/opt/flink/state/checkpoints/de76cfe32ba4d1b79ffd193d8609774b/chk-71251",
+        "discarded": false
+      },
+      "savepoint": null,
+      "failed": null,
+      "restored": {
+        "id": 71247,
+        "restore_timestamp": 1792259171542,
+        "is_savepoint": true,
+        "external_path": "file:/opt/flink/state/savepoints/savepoint-2d39a1-31628b300c9d"
+      }
+    }
+  },
+  {
+    "label": "delete-end",
+    "observed_at": "2026-10-17T17:47:01.220038+00:00",
+    "job_id": "de76cfe32ba4d1b79ffd193d8609774b",
+    "counts": {
+      "restored": 1,
+      "total": 5,
+      "in_progress": 0,
+      "completed": 5,
+      "failed": 0
+    },
+    "latest": {
+      "completed": {
+        "className": "completed",
+        "id": 71252,
+        "status": "COMPLETED",
+        "is_savepoint": false,
+        "savepointFormat": null,
+        "trigger_timestamp": 1792259219909,
+        "latest_ack_timestamp": 1792259219969,
+        "checkpointed_size": 3802,
+        "state_size": 3802,
+        "end_to_end_duration": 60,
+        "alignment_buffered": 0,
+        "processed_data": 0,
+        "persisted_data": 0,
+        "num_subtasks": 2,
+        "num_acknowledged_subtasks": 2,
+        "checkpoint_type": "CHECKPOINT",
+        "tasks": {},
+        "external_path": "file:/opt/flink/state/checkpoints/de76cfe32ba4d1b79ffd193d8609774b/chk-71252",
+        "discarded": false
+      },
+      "savepoint": null,
+      "failed": null,
+      "restored": {
+        "id": 71247,
+        "restore_timestamp": 1792259171542,
+        "is_savepoint": true,
+        "external_path": "file:/opt/flink/state/savepoints/savepoint-2d39a1-31628b300c9d"
+      }
+    }
+  }
+]

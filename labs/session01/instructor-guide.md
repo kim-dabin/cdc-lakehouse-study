@@ -41,7 +41,7 @@ Bronze는 Kafka value(payload)와 수집 위치를 보관하며 key는 별도 �
 
 ## 수집 시연 25분
 
-[runbook](runbook.md)의 준비 행 3분, INSERT 7분, UPDATE 7분, DELETE 8분 순서다. 각 단계에서 원천·Kafka를 보고 `wait --evidence`, `collect-check --summary --evidence`를 실행한다. **요약 결과를 최소 60초 고정**하고 학생이 마지막 세 칸만 쓰게 한다. 상세 JSON은 증거 파일로 남긴다.
+[runbook](runbook.md)의 준비 행 3분, INSERT 7분, UPDATE 7분, DELETE 8분 순서다. 각 단계에서 원천을 보고 `wait --evidence`로 적재를 기다린 뒤 Kafka 원문과 `collect-check --summary --evidence`를 확인한다. 원천 커밋 직후 Kafka를 조회하면 아직 빈 목록일 수 있으므로 원문 시연은 대기 뒤에 한다. **요약 결과를 최소 60초 고정**하고 학생이 마지막 세 칸만 쓰게 한다. 상세 JSON은 증거 파일로 남긴다.
 
 수집 위치와 PK는 강사가 짚어 읽고 학생은 모든 필드를 받아쓰지 않는다. wait 결과가 summary의 wait_observation에 포함된다. DELETE 이후 결과 화면을 휴식 중에도 유지하되, 빈칸 채우기를 휴식의 필수 과제로 만들지 않는다.
 

@@ -20,10 +20,12 @@ export DOCKER_HOST="unix://$HOME/.lima/cdc-lab/sock/docker.sock"
 
 ```bash
 cd ~/bootcamp/cdc-lakehouse-study
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh --build
 ./scripts/stop.sh
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh --no-build
 ```
+
+첫 설치·이미지 변경에는 `--build`, 준비된 환경을 수업 당일 기동할 때는 `--no-build`를 사용한다. `--no-build`는 이미지 빌드·pull 없이 로컬 이미지만 사용하고, 필요한 이미지가 없으면 중단한다. 옵션을 생략하면 기존처럼 빌드한다.
 
 `bootstrap.sh`는 Kafka 토픽, Debezium 커넥터, Iceberg 테이블과 최초 마트를 준비한다. 기존 RUNNING 작업에는 중복 제출하지 않는다. `stop.sh`는 savepoint를 남겨 종료하고 다음 `bootstrap.sh`에서 복원한다. 예고 없이 JobManager까지 사라진 경우에는 재생을 막고 명시적인 복구를 요구한다.
 

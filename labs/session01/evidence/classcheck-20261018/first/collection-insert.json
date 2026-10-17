@@ -1,0 +1,75 @@
+{
+  "namespace": "s01-classcheck-20261018a",
+  "stage": "insert",
+  "source_rows": [
+    {
+      "refund_id": "s01-classcheck-20261018a-r1",
+      "payment_id": "s01-classcheck-20261018a-p1",
+      "amount": 20000,
+      "status": "success"
+    }
+  ],
+  "kafka_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 22,
+      "key": {
+        "refund_id": "s01-classcheck-20261018a-r1"
+      },
+      "tombstone": false,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-classcheck-20261018a-r1",
+        "payment_id": "s01-classcheck-20261018a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26859456,
+      "source_ts_ms": 1792258716531,
+      "connector_ts_ms": 1792258716543
+    }
+  ],
+  "bronze_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 22,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-classcheck-20261018a-r1",
+        "payment_id": "s01-classcheck-20261018a-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26859456,
+      "source_ts_ms": 1792258716531,
+      "connector_ts_ms": 1792258716543,
+      "kafka_ts": "2026-10-17 17:38:36.997000",
+      "ingested_at": "2026-10-17 17:38:37.006000"
+    }
+  ],
+  "checks": [
+    {
+      "op": "c",
+      "identity": [
+        "cdc.public.refunds",
+        0,
+        22
+      ],
+      "bronze_copies": 1
+    }
+  ],
+  "passed": true,
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee",
+  "wait_observation": {
+    "namespace": "s01-classcheck-20261018a",
+    "event": "refund",
+    "bronze_visible": true,
+    "wait_observed_seconds": 7.08,
+    "wait_started_at": "2026-10-17T17:38:37.018632+00:00",
+    "bronze_observed_at": "2026-10-17T17:38:44.093845+00:00"
+  }
+}

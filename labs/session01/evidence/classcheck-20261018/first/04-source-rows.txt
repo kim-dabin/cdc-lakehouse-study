@@ -1,0 +1,11 @@
+{
+  "refund_id": "s01-classcheck-20261018a-r1",
+  "source_rows": [
+    {
+      "refund_id": "s01-classcheck-20261018a-r1",
+      "payment_id": "s01-classcheck-20261018a-p1",
+      "amount": 20000,
+      "status": "success"
+    }
+  ]
+}

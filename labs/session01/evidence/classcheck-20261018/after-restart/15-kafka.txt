@@ -1,0 +1,50 @@
+{
+  "refund_id": "s01-classcheck-20261018b-r1",
+  "kafka_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 26,
+      "key": {
+        "refund_id": "s01-classcheck-20261018b-r1"
+      },
+      "tombstone": false,
+      "op": "c",
+      "before": null,
+      "after": {
+        "refund_id": "s01-classcheck-20261018b-r1",
+        "payment_id": "s01-classcheck-20261018b-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26865176,
+      "source_ts_ms": 1792258988728,
+      "connector_ts_ms": 1792258989207
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 27,
+      "key": {
+        "refund_id": "s01-classcheck-20261018b-r1"
+      },
+      "tombstone": false,
+      "op": "u",
+      "before": {
+        "refund_id": "s01-classcheck-20261018b-r1",
+        "payment_id": "s01-classcheck-20261018b-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-classcheck-20261018b-r1",
+        "payment_id": "s01-classcheck-20261018b-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26867088,
+      "source_ts_ms": 1792258998856,
+      "connector_ts_ms": 1792258999181
+    }
+  ]
+}

@@ -4,6 +4,7 @@
 
 PostgreSQL의 INSERT·UPDATE·DELETE가 Kafka 이벤트로 전달되고 Iceberg Bronze에 남는 과정을 확인한다. 같은 PK의 원천 행과 이벤트 key/op/before/after, 토픽·파티션·오프셋을 대조하고 개인 프로젝트의 원천 명세와 파이프라인을 설계한다.
 
+- [2026-10-18 수업 전 재실행·재기동 검증](classcheck-20261018.md)
 - [외부 검토 반영과 판단](review-response.md)
 - [왜 CDC를 배우는가 / 개인 프로젝트 다섯 가지](why-cdc-and-projects.md)
 - [강의용 PPT](slides/README.md)

@@ -2,6 +2,8 @@
 
 모든 실행 명령은 **맥미니의 프로젝트 폴더**에서 사용한다. 학생은 로컬 설계·예측용 SQL·설계서를 작성하며 학생별 파일을 서버에서 실행하지 않는다. 핵심 시연은 같은 환불 PK의 INSERT·UPDATE·DELETE를 원천, Kafka, Iceberg Bronze에서 대조한다. Silver·Gold 갱신은 이번 핵심 시연에서 실행하지 않는다.
 
+[2026-10-18 실제 실행·재기동 확인 기록](classcheck-20261018.md).
+
 ## 수업 전 준비
 
 전날 30–45분을 따로 확보한다. 학생에게 저장소 읽기 권한 또는 두 템플릿을 제공하고 새 CASE_ID로 아래 전체 순서를 리허설한다.
@@ -10,9 +12,11 @@
 ssh mini
 cd ~/bootcamp/cdc-lakehouse-study
 ./scripts/lab.sh --profile orchestration stop airflow
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh --no-build
 ./scripts/lab.sh exec -T runner python labs/session01/preflight.py
 ```
+
+첫 설치·이미지 변경은 수업 전에 `./scripts/bootstrap.sh --build`로 완료한다. 수업 당일 `--no-build`는 로컬 이미지만 사용하며 빌드·이미지 pull을 하지 않는다. 이미지가 없으면 중단하므로 당일 새로 설치하지 않는다.
 
 `ready: true`와 실제 조회를 확인한다. VM 최소 여유 2GiB, 5GiB 이상 권장. bootstrap은 기존 복구 지점에서 시작하며 준비 과정에서 pipeline.py도 실행한다. 이 준비 동작과 수업 중 c/u/d 수집 시연을 구분한다. 초기 설치는 120분에 포함하지 않는다. 복구 지점 없이 작업이 사라졌다면 임의로 `.runtime/flink-state.json`을 삭제하지 않는다.
 

@@ -1,0 +1,8 @@
+{
+  "ssh_tunnel_http": 200,
+  "flink_version": "1.20.4",
+  "jobs_running": 1,
+  "ui_javascript_asset_http": 200,
+  "ui_javascript_asset_bytes": 727866,
+  "scope": "HTTP page, JS asset and APIs through SSH tunnel; no browser rendering assertion"
+}

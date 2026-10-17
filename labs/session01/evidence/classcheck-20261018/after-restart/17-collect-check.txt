@@ -1,0 +1,12 @@
+stage=delete  passed=True  source_rows=0
+refund_id=s01-classcheck-20261018b-r1
+op=d  before_amount=30000  after_amount=None
+topic=cdc.public.refunds
+partition=0  kafka_offset=28  bronze_copies=1
+source_lsn=26867408
+history_ops=c,u,d  kafka_tombstones=1
+kafka_ts=2026-10-17 17:43:29.407000
+ingested_at=2026-10-17 17:43:29.415000
+wait_observed_seconds=9.29
+wait basis: command start to first Bronze observation; not source-commit latency
+scope: this synthetic key only; not an exactly-once guarantee

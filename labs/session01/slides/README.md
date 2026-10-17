@@ -18,6 +18,7 @@
 - [맥미니 실행 순서](../runbook.md)
 - [학생 SQL](../sql/student-worksheet.sql)
 - [제출 설계서](../submission-template.md)
-- [최신 수집 검증 리허설](../collection-rehearsal-20261017.md)
+- [수업 전 재실행·재기동 검증](../classcheck-20261018.md)
+- [2026-10-17 수집 검증](../collection-rehearsal-20261017.md)
 
 이전 `session01-cdc-lakehouse-v3.pptx`와 `session01-data-engineering.pptx`, `session01-data-engineering-v2.pptx`는 수정 전 초안으로 보관합니다. 이번 수업에는 위 데이터 엔지니어링 버전을 사용합니다. 8회까지가 스터디이며 프로젝트 발표는 별도 일정입니다.

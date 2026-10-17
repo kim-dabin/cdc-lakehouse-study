@@ -1,0 +1,8 @@
+{
+  "namespace": "s01-classcheck-20261018b",
+  "event": "payment",
+  "bronze_visible": true,
+  "wait_observed_seconds": 2.65,
+  "wait_started_at": "2026-10-17T17:43:06.173567+00:00",
+  "bronze_observed_at": "2026-10-17T17:43:08.638954+00:00"
+}

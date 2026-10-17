@@ -1,0 +1,8 @@
+{
+  "namespace": "s01-classcheck-20261018a",
+  "event": "delete",
+  "bronze_visible": true,
+  "wait_observed_seconds": 7.02,
+  "wait_started_at": "2026-10-17T17:40:55.910341+00:00",
+  "bronze_observed_at": "2026-10-17T17:41:02.749223+00:00"
+}

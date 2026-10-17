@@ -1,0 +1,7 @@
+{
+  "http": 200,
+  "active_cdc_jobs": 1,
+  "job_id": "2d39a17e8bc9d3a9b3849a530ead8025",
+  "route": "localhost:28081 \u2192 SSH \u2192 mini:28081",
+  "phase": "after savepoint restart"
+}

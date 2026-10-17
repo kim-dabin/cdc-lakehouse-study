@@ -30,6 +30,8 @@ cp .env.example .env
   'SELECT * FROM lake.gold.mart_daily_settlement'
 ```
 
+이미지 준비 후 수업 당일에는 `./scripts/bootstrap.sh --no-build`로 기동해 빌드와 이미지 다운로드를 생략합니다.
+
 초기 기준값은 2026-10-01 주문 한 건, 결제 100,000원입니다. 마트의 `net_paid`는 **주문일 기준 결제 성공액 − 환불 성공액**이며 회계상 매출을 의미하지 않습니다.
 
 ```bash

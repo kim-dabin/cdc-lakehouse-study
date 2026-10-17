@@ -1,0 +1,33 @@
+{
+  "stage": "delete",
+  "passed": true,
+  "source_rows": 0,
+  "refund_id": "s01-classcheck-20261018b-r1",
+  "op": "d",
+  "before_amount": 30000,
+  "after_amount": null,
+  "identity": [
+    "cdc.public.refunds",
+    0,
+    28
+  ],
+  "source_lsn": 26867408,
+  "bronze_copies": 1,
+  "history_ops": [
+    "c",
+    "u",
+    "d"
+  ],
+  "kafka_tombstones": 1,
+  "kafka_ts": "2026-10-17 17:43:29.407000",
+  "ingested_at": "2026-10-17 17:43:29.415000",
+  "wait_observation": {
+    "namespace": "s01-classcheck-20261018b",
+    "event": "delete",
+    "bronze_visible": true,
+    "wait_observed_seconds": 9.29,
+    "wait_started_at": "2026-10-17T17:43:29.435558+00:00",
+    "bronze_observed_at": "2026-10-17T17:43:38.543673+00:00"
+  },
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee"
+}

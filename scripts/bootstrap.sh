@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+if [[ $# -gt 1 ]]; then
+ echo 'Usage: bootstrap.sh [--build|--no-build]' >&2; exit 2
+fi
+case "${1:---build}" in
+ --build) up_options=(--build) ;;
+ --no-build) up_options=(--no-build --pull never) ;;
+ --help|-h) echo 'Usage: bootstrap.sh [--build|--no-build]'; exit 0 ;;
+ *) echo 'Usage: bootstrap.sh [--build|--no-build]' >&2; exit 2 ;;
+esac
 mkdir -p .runtime artifacts/runs
-./scripts/lab.sh up -d --build
+./scripts/lab.sh up -d "${up_options[@]}"
 for table in orders payments refunds; do
  ./scripts/lab.sh exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "cdc.public.$table" --partitions 1 --replication-factor 1
 done

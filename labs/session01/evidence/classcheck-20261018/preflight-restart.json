@@ -1,0 +1,10 @@
+{
+  "ready": true,
+  "vm_free_gib": 22.72,
+  "job_id": "2d39a17e8bc9d3a9b3849a530ead8025",
+  "row_counts": {
+    "lake.bronze.cdc_events": 38,
+    "lake.silver.payments": 8,
+    "lake.gold.fct_order_settlement": 8
+  }
+}

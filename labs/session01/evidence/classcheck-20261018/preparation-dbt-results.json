@@ -1,0 +1,14 @@
+{
+  "first": {
+    "pass": 8,
+    "warn": 0,
+    "error": 0,
+    "skip": 0
+  },
+  "restart": {
+    "pass": 8,
+    "warn": 0,
+    "error": 0,
+    "skip": 0
+  }
+}

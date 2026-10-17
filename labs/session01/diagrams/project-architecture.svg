@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker></defs><rect width="1440" height="1010" fill="#f5f7fb"/><style>text{font-family:Arial,'Apple SD Gothic Neo','Noto Sans CJK KR',sans-serif} .title{font-size:30px;font-weight:700;fill:#14243a}.sub{font-size:17px;fill:#52637b}.label{font-size:20px;font-weight:700;fill:#14243a}.body{font-size:16px;fill:#44566e}.small{font-size:14px;fill:#52637b}</style>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker><marker id="arrow-today" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#397abd"/></marker></defs><rect width="1440" height="1010" fill="#f5f7fb"/><style>text{font-family:Arial,'Apple SD Gothic Neo','Noto Sans CJK KR',sans-serif} .title{font-size:30px;font-weight:700;fill:#14243a}.sub{font-size:17px;fill:#52637b}.label{font-size:20px;font-weight:700;fill:#14243a}.body{font-size:16px;fill:#44566e}.small{font-size:14px;fill:#52637b}.scope-today{font-size:17px;font-weight:700;fill:#fff}.scope-detail{font-size:14px;fill:#3975aa}.scope-future{font-size:14px;font-weight:700;fill:#6d7d91}</style>
 <text x="42" y="54" class="title" text-anchor="start">1회차 공통 예제 — 변경 데이터 수집 확인</text>
 <text x="42" y="84" class="sub" text-anchor="start">강사가 맥미니에서 실행 · 학생은 공통 SQL과 수집 대조 기록 작성</text>
 <rect x="42" y="115" width="330" height="90" rx="14" fill="#fff" stroke="#d6dfec"/>
@@ -14,25 +14,32 @@
 <text x="52" y="273" class="label" text-anchor="start">Mac mini  /  Lima Linux ARM64  /  Docker Compose</text>
 <text x="52" y="301" class="small" text-anchor="start">전용 VM: CPU 6개 · RAM 10 GiB     |     외부 공개 없이 loopback + SSH 터널</text>
 <path d="M625,205 L625,235" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
-<rect x="52" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
+<g id="today-ingestion">
+<rect x="52" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#719dce" stroke-width="2"/>
 <text x="70" y="361" class="label" text-anchor="start">PostgreSQL</text>
 <text x="70" y="389" class="body" text-anchor="start">서비스 원천 테이블</text>
 <text x="70" y="412" class="body" text-anchor="start">INSERT · UPDATE · DELETE</text>
-<rect x="330" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
+<rect x="330" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#719dce" stroke-width="2"/>
 <text x="348" y="361" class="label" text-anchor="start">Debezium + Kafka</text>
 <text x="348" y="389" class="body" text-anchor="start">WAL 변경 캡처</text>
 <text x="348" y="412" class="body" text-anchor="start">스냅샷 · 테이블별 이벤트</text>
-<rect x="608" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
+<rect x="608" y="329" width="236" height="113" rx="14" fill="#fff" stroke="#719dce" stroke-width="2"/>
 <text x="626" y="361" class="label" text-anchor="start">Flink SQL</text>
 <text x="626" y="389" class="body" text-anchor="start">CDC 원문 + 전달 메타데이터</text>
 <text x="626" y="412" class="body" text-anchor="start">체크포인트 후 커밋 확인</text>
-<rect x="886" y="329" width="236" height="113" rx="14" fill="#e3efff" stroke="#d6dfec"/>
+<rect x="886" y="329" width="236" height="113" rx="14" fill="#d8e9ff" stroke="#397abd" stroke-width="2.4"/>
 <text x="904" y="361" class="label" text-anchor="start">Iceberg Bronze</text>
 <text x="904" y="389" class="body" text-anchor="start">추가 전용 변경 이력</text>
 <text x="904" y="412" class="body" text-anchor="start">before / after / op / LSN</text>
-<path d="M288,385 L322,385" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-<path d="M566,385 L600,385" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-<path d="M844,385 L878,385" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M288,385 L322,385" stroke="#397abd" stroke-width="2.8" fill="none" marker-end="url(#arrow-today)"/>
+<path d="M566,385 L600,385" stroke="#397abd" stroke-width="2.8" fill="none" marker-end="url(#arrow-today)"/>
+<path d="M844,385 L878,385" stroke="#397abd" stroke-width="2.8" fill="none" marker-end="url(#arrow-today)"/>
+<rect x="1158" y="346" width="226" height="38" rx="12" fill="#397abd"/>
+<text x="1176" y="371" class="scope-today" text-anchor="start">오늘 실습 범위</text>
+<text x="1158" y="412" class="scope-detail" text-anchor="start">수집 → Bronze 저장·검증</text>
+</g>
+<text x="52" y="479" class="scope-future" text-anchor="start">후속 회차 · Silver·Gold 변환과 마트 갱신</text>
+<g id="future-transformations" opacity="0.48">
 <rect x="52" y="492" width="236" height="113" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="70" y="524" class="label" text-anchor="start">마트 갱신</text>
 <text x="70" y="552" class="body" text-anchor="start">1회차: 갱신 실행 안 함</text>
@@ -58,6 +65,7 @@
 <path d="M844,548 L878,548" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <path d="M1122,548 L1150,548" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <path d="M1004,442 L1004,466 L448,466 L448,484" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+</g>
 <rect x="52" y="659" width="400" height="112" rx="14" fill="#fff6e8" stroke="#d6dfec"/>
 <text x="70" y="691" class="label" text-anchor="start">Iceberg JDBC Catalog</text>
 <text x="70" y="719" class="body" text-anchor="start">catalog-db: 현재 메타데이터 위치 관리</text>

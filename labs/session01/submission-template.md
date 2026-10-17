@@ -1,20 +1,42 @@
 # 1회차 제출 — 이름 / 학생 ID
 
-## 1. 아키텍처를 보며 역할 정리
+작성일:
 
-| 구간 | 내 말로 한 줄 |
+오늘은 공통 orders·payments·refunds 예제를 예측하고 수집 결과를 대조합니다. 개인 도메인·테이블·DDL 설계는 제출하지 않습니다. 시연 전 기대값을 먼저 쓰고, 실제 관찰은 강사 화면을 본 뒤 작성합니다.
+
+## 1. 왜 CDC 레이크하우스인가
+
+- 전체 복사나 updated_at 조회보다 로그 기반 CDC가 필요한 상황 한 가지:
+- CDC를 선택해도 관리해야 하는 비용·운영 문제 한 가지:
+
+## 2. Iceberg와 아키텍처 역할 정리
+
+| 구간·구성 요소 | 내 말로 한 줄 |
 |---|---|
-| PostgreSQL → Debezium | |
-| Kafka → Flink → Bronze | |
-| 객체 저장소 / Catalog / 복구 상태 | |
+| PostgreSQL → Debezium → Kafka | |
+| Flink → Iceberg Bronze | |
+| MinIO / JDBC Catalog / Flink 복구 상태 | |
+| Spark SQL Silver / dbt Gold — 후속 회차 | |
 
-## 2. 시연 전 예측과 시연 중 관찰
+- Bronze·Silver·Gold와 Iceberg 내부 메타데이터 구조의 차이 한 문장:
 
-**시연 전** 기대 원천 행과 before/after를 채웁니다. **시연 중**에는 오른쪽 3칸만 기록합니다.
+## 3. 환경 확인과 ingest.sql 읽기
+
+- SQL 편집기와 student-worksheet.sql / submission.md 준비: 완료 / 확인 필요
+- 강사가 확인한 preflight ready 상태: true / false / 미확인
+- SQL [A]에 Catalog·raw 포맷·checkpoint·null 제외 조건의 역할을 정리했습니다: 예 / 작성 중
+- Flink RUNNING이나 checkpoint 성공만으로 수집 완료라고 할 수 없는 이유:
+
+학생은 맥미니 접속이나 로컬 Docker 실행 결과를 제출하지 않습니다.
+
+## 4. 공통 예제 사전 예측과 수집 결과 대조
 
 강사 CASE_ID:
+실제 환불 ID — CASE_ID-r1:
 공통 토픽 / 파티션: cdc.public.refunds / 화면에서 확인
-관찰 방식: 실제 시연 / 과거 리허설 기록 (선택)
+관찰 방식: 실제 시연 / 과거 리허설 기록 / 미관찰 (선택)
+
+**시연 전** 두 번째 열을 채웁니다. **시연 중** 오른쪽 세 열에 실제 before/after·offset·copies를 기록합니다. 전체 JSON을 받아쓰지 않습니다.
 
 | 변경(op) | 기대 원천 행 / before→after amount | 실제 before→after | Kafka offset | bronze_copies |
 |---|---|---|---|---|
@@ -22,47 +44,36 @@
 | UPDATE(u) | | | | |
 | DELETE(d) | | | | |
 
-- 강사가 확인한 Kafka key와 원천 PK의 일치 여부:
-- DELETE 후 원천 0행 / Bronze c,u,d 이력 보관 확인:
-- Kafka null tombstone과 Bronze 행 수 차이:
+### 강사와 함께 확인
 
-### 시연 뒤 지연 관찰 — DELETE 한 세트만
+- Kafka key의 refund_id와 원천 PK: 일치 / 불일치 / 미확인
+- 원천의 환불 행: INSERT 뒤 1행·20000 / UPDATE 뒤 1행·30000 / DELETE 뒤 0행 확인 여부:
+- Kafka와 Bronze의 같은 topic·partition·offset 및 내용: 일치 / 불일치 / 미확인
+- DELETE 뒤 이번 환불 키의 Bronze history_ops:
+- 이번 환불 키의 Kafka null tombstone 수:
+- tombstone을 제외한 Bronze 이력 행 수:
+- 원천은 0행인데 Bronze에는 c/u/d가 남는 이유:
+
+### DELETE 요약의 지연 한 세트
 
 | kafka_ts | ingested_at | wait_observed_seconds |
 |---|---|---|
 | | | |
 
-이 값만으로 원천 commit부터 조회 가능 시점까지의 전체 지연을 계산할 수 없는 이유:
+이 값만으로 원천 commit부터 분석 마트 반영까지의 전체 지연을 계산할 수 없는 이유:
 
-Kafka에 있으나 Bronze에 없을 때 먼저 확인할 구간 (한 문장):
+Kafka에 있으나 Bronze에 없을 때 먼저 확인할 구간 한 문장:
 
-## 3. 개인 설계 — 수업 중 필수
+## 5. 제출 점검과 2회차 질문
 
-- 주제 / 데이터 소비 목적:
-- CDC를 선택하는 이유:
-- 나중에 추가할 테이블 이름 1–2개 (이름만):
+- [ ] SQL [A] 네 가지 설정의 역할 정리
+- [ ] SQL [B] UPDATE·DELETE 뒤 같은 PK를 조회하는 SELECT 작성
+- [ ] SQL [C] 공통 환불 c/u/d 이벤트 예측
+- [ ] 위 1–4절 작성, 미확인 값은 미확인으로 표시
+- [ ] student-worksheet.sql과 이 파일을 강사가 안내한 채널에 제출
 
-| 핵심 테이블 하나 | 한 행의 의미 | PK / 관계 | 수정 컬럼 / 삭제 방식 |
-|---|---|---|---|
-| | | | |
+다음 회차에서 확인하고 싶은 수집 설정·동작 질문 한 가지:
 
-파이프라인 한 줄: PostgreSQL 내 테이블 → Debezium → Kafka 내 토픽 → Flink → Iceberg Bronze
+관심 도메인 메모 (선택, 설계 과제 아님):
 
-| 내 변경 | 대상 PK | 기대 op와 before/after |
-|---|---|---|
-| INSERT | | |
-| UPDATE | | |
-| DELETE | | |
-
-DDL 하나를 `student-worksheet.sql` [C]에 작성했습니다: 예 / 작성 중
-
-이번 실습에서는 이전 값을 관찰하기 위해 PK와 REPLICA IDENTITY FULL을 포함합니다. 수집 권한·publication·connector·Flink 연결은 다음 회차에 확인합니다.
-
-## 4. 다음 회차 전 과제
-
-- [ ] 나머지 테이블 1–2개 명세·DDL과 관계 보완
-- [ ] 개인 테이블의 c/u/d DML과 원천 확인 SELECT 작성
-- [ ] 수집 범위·목표 지연·이력 보존과 연결 설정 초안 보완
-- 미정 항목 / 질문:
-
-오늘은 위 1–3절과 SQL [A]의 원천 SELECT, [C]의 DDL 초안을 제출합니다. 개인 DML·SELECT 전체는 과제로 완성합니다. 프로젝트 발표는 8회 스터디 뒤 별도 일정입니다.
+2회차는 PostgreSQL → Debezium → Kafka 수집 심화입니다. 개인 프로젝트 설계 확정은 3회차에 진행하며, 개인 DDL·개인 DML은 이번 과제에 포함하지 않습니다. 프로젝트 발표는 8회 스터디 뒤 별도 일정입니다.

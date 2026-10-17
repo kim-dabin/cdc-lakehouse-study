@@ -1,8 +1,30 @@
 # 1회차 강사용 실행 순서 — CDC 수집 검증
 
-모든 실행 명령은 **맥미니의 프로젝트 폴더**에서 사용한다. 학생은 로컬 설계·예측용 SQL·설계서를 작성하며 학생별 파일을 서버에서 실행하지 않는다. 핵심 시연은 같은 환불 PK의 INSERT·UPDATE·DELETE를 원천, Kafka, Iceberg Bronze에서 대조한다. Silver·Gold 갱신은 이번 핵심 시연에서 실행하지 않는다.
+모든 실행 명령은 **맥미니의 프로젝트 폴더**에서 사용한다. 학생은 로컬에서 공통 예제 SQL·이벤트 예측과 수집 관찰 기록을 작성하며 학생별 파일을 서버에서 실행하지 않는다. 개인 설계는 3회차에 확정한다. 핵심 시연은 같은 환불 PK의 INSERT·UPDATE·DELETE를 원천, Kafka, Iceberg Bronze에서 대조한다. Silver·Gold 갱신은 이번 핵심 시연에서 실행하지 않는다.
 
 [2026-10-18 실제 실행·재기동 확인 기록](classcheck-20261018.md).
+
+## 최종 강의안과 연결
+
+현재 [120분 진행안](instructor-guide.md)에 따라 01:10–01:25 환경·코드를 확인하고, 01:25–01:35 준비 데이터·사전 예측, 01:35–01:55 환불 c/u/d 대조를 진행한다. 관찰 결과는 [제출 양식](submission-template.md) 4절에 기록한다. 학생 SQL은 [A] 코드 읽기, [B] 원천 SELECT, [C] 이벤트 예측, [D] Bronze 조회 참고로 구성한다.
+
+## 실행 환경과 포트
+
+구성 파일은 `compose.yaml`이다. 핵심 상시 서비스는 9개이며 Spark와 runner는 별개다. `minio-init`은 버킷 생성 후 종료되는 일회성 서비스이고 Airflow는 선택 프로필로 1회차에서는 정지한다.
+
+| 서비스 | 컨테이너 내부 | 맥미니 호스트 127.0.0.1 |
+|---|---|---|
+| source-db | source-db:5432 | 25432 |
+| catalog-db | catalog-db:5432 | 공개 없음 |
+| kafka | kafka:9092 | 공개 없음 |
+| connect | connect:8083 | 28083 |
+| minio | minio:9000 / Console 9001 | API 29000 / Console 29001 |
+| jobmanager | jobmanager:8081 | 28081 |
+| taskmanager | 내부 통신 | 공개 없음 |
+| spark | Thrift 10000 / UI 4040 | Thrift 21000 / UI 24040 |
+| runner | Python·dbt 실행 | 공개 없음 |
+
+강사 노트북에서 아래 SSH 터널을 열어야 노트북의 localhost:28081로 맥미니 Flink UI에 접속할 수 있다. 학생의 서버 접속은 필요하지 않다.
 
 ## 수업 전 준비
 
@@ -31,15 +53,15 @@ ssh -N -L 28081:127.0.0.1:28081 mini
 ## 1. 새 실행 키와 준비 행
 
 ```bash
-CASE_ID=s01-instructor-unique
+CASE_ID=s01-live-$(date +%m%d%H%M%S)
 cat labs/session01/sql/01-payment.sql
 ./labs/session01/lab.sh "$CASE_ID" payment
 ./labs/session01/lab.sh "$CASE_ID" wait --event payment --evidence
 ```
 
-`unique`를 매 수업·리허설마다 다른 문자열로 바꾼다. 허용 형식은 `s01-`과 소문자·숫자·하이픈. 주문 `CASE_ID-o1`, 결제 `CASE_ID-p1`, 환불 `CASE_ID-r1`을 사용한다. 준비 단계에는 주문·결제가 생기며 핵심 비교에서는 환불 토픽과 키만 필터링한다. 기존 키를 지워 초기화하지 않는다.
+CASE_ID는 매 수업·리허설마다 새로 만든다. 허용 형식은 `s01-`과 소문자·숫자·하이픈이며 같은 초에 다시 실행할 때도 기존 키와 겹치지 않게 한다. 주문 `CASE_ID-o1`, 결제 `CASE_ID-p1`, 환불 `CASE_ID-r1`을 사용한다. 준비 단계에는 주문·결제가 생기며 핵심 비교에서는 환불 토픽과 키만 필터링한다. 기존 키를 지워 초기화하지 않는다.
 
-원천 커밋 직후에는 아직 Kafka에 이벤트가 없어 빈 목록이 나올 수 있다. 수업에서는 아래처럼 wait 뒤 Kafka 원문을 조회해 최신 op를 보여준다. PPT 부록의 대기 전 Kafka 조회는 도착 전일 수 있으므로 강사 시연은 이 실행 순서를 따른다.
+원천 커밋 직후에는 아직 Kafka에 이벤트가 없어 빈 목록이 나올 수 있다. 수업에서는 아래처럼 wait 뒤 Kafka 원문을 조회해 최신 op를 보여준다. 강의안에 축약된 명령이 있어도 실제 시연은 이 실행 순서를 따른다.
 
 ## 2. INSERT: 원천 한 행과 op=c
 
@@ -80,7 +102,7 @@ cat labs/session01/sql/04-delete-optional.sql
 ./labs/session01/lab.sh "$CASE_ID" collect-check --stage delete --summary --evidence
 ```
 
-**요약 화면을 최소 60초 고정**하고 휴식에도 유지한다. 원천 해당 PK는 0행. Kafka op=d, before.amount=30000, after=null. Bronze에는 c/u/d 세 이벤트가 남는다. Kafka key/value와 null tombstone을 구분한다. Flink 원문 적재 SQL은 tombstone null을 제외하므로 tombstone까지 포함한 Kafka 메시지 수와 Bronze 행 수가 다를 수 있다.
+**요약 화면을 최소 60초 고정**하고 마지막 지연 한 세트까지 기록하게 한다. 원천 해당 PK는 0행. Kafka op=d, before.amount=30000, after=null. Bronze에는 c/u/d 세 이벤트가 남는다. Kafka key/value와 null tombstone을 구분한다. Flink 원문 적재 SQL은 tombstone null을 제외하므로 tombstone까지 포함한 Kafka 메시지 수와 Bronze 행 수가 다를 수 있다.
 
 `kafka`와 `collect-check`는 독립적인 읽기 전용 소비자를 사용하며 Flink consumer group의 offset을 변경하지 않는다. 환불 토픽의 시작부터 호출 시점 end offset까지 읽어 이번 key만 출력하고 스캔은 30초로 제한한다. 오래 쌓인 실습 환경에서 timeout이 나면 수업 중 전체 Kafka 데이터를 삭제하지 말고 리허설 기록으로 전환한다.
 
@@ -113,7 +135,7 @@ wait 출력은 대기 시작 이후 첫 Bronze 관찰 시간이다. `kafka_ts`�
 | 예상 밖 이벤트 / 중복 | 위치와 내용을 보존. 새 키로 핵심 시나리오를 다시 확인 |
 | Silver·Gold는 과거 값 | 핵심 CDC 수집 시연과 별도. 오늘 refresh를 실행하지 않음 |
 
-학생은 장애 조사 순서를 설계서에 적고 개인 설계를 계속한다. 같은 장애를 20분 동안 공개 디버깅하지 않는다.
+학생은 제출 양식 4절에 조사할 구간을 적고, 과거 리허설로 전환했다면 관찰 방식을 표시한다. 같은 장애를 20분 동안 공개 디버깅하지 않고 종료·제출 시간을 확보한다.
 
 ## 수업 종료
 

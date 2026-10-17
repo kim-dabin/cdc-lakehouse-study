@@ -1,45 +1,62 @@
-# 1회차 실습 가이드 — 변경 데이터 수집과 파이프라인 설계
+# 1회차 실습 가이드 — 공통 예제의 변경을 예측하고 수집 결과 확인하기
 
-서비스 DB의 예약 취소·상품 삭제·금액 정정을 필요한 곳에 전달하는 일을 다룹니다. [왜 CDC를 배우는지와 만들 수 있는 프로젝트](why-cdc-and-projects.md)를 읽고, 원천·Kafka·Iceberg Bronze의 같은 변경을 대조합니다.
+**120분 · 강사 맥미니 시연 + 학생 SQL·관찰 기록 작성**
 
-강사는 맥미니에서 실행하고 화면을 공유합니다. 학생은 자기 노트북에서 SQL과 설계서를 작성합니다. Kafka·Spark·Docker·S3·Airflow 등의 정규 과정을 들은 수강생 대상이며, 이번 회차에 서버 설치나 SSH 접속을 하지 않습니다.
+주문·결제를 준비한 뒤 같은 환불 한 건을 입력하고, 금액을 정정하고, 삭제합니다. PostgreSQL의 현재 행과 Kafka 이벤트, Iceberg Bronze의 변경 이력이 어떻게 달라지는지 대조합니다.
 
-## 준비와 실행 역할
+Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes 정규 과정을 수강한 학생 대상입니다. 이번 회차에는 공통 예제로 전체 흐름을 익힙니다. 개인 프로젝트의 도메인·테이블 설계 확정은 3회차에 진행합니다.
 
-[학생 SQL](sql/student-worksheet.sql)과 [제출 템플릿](submission-template.md)을 개인 폴더에 복사하고, 템플릿은 `submission.md`로 저장합니다. 비공개 저장소 권한이 없으면 강사가 같은 파일을 배포합니다.
+## 수업 전에 준비할 파일
 
-**학생 파일은 로컬 설계·예측용입니다.** 학생별 SQL을 수업 중 맥미니에 올려 실행하지 않습니다. 예제 키 `my-r1`을 그대로 사용해도 됩니다. 강사는 공통 시연 CASE_ID로 별도의 SQL을 실행하며, 학생은 화면의 키를 관찰표에 적습니다.
+1. [학생 SQL](sql/student-worksheet.sql)을 자신의 작업 폴더에 복사합니다.
+2. [제출 양식](submission-template.md)을 같은 폴더에 `submission.md`로 저장합니다.
+3. SQL 편집기와 강사 공유 화면을 함께 볼 수 있게 준비합니다. 저장소 권한이 없으면 강사가 배포한 두 파일을 사용합니다.
+
+강사는 맥미니에서 실행하고 학생은 로컬 파일을 작성합니다. 학생별 Docker 설치·기동, SSH 접속, 서버 SQL 실행은 필요하지 않습니다. 학생 SQL의 `my-r1`은 예측용 이름입니다. 실제 시연은 강사가 새 CASE_ID를 사용하므로, 화면의 CASE_ID와 실제 환불 ID를 `submission.md` 4절에 적습니다.
 
 ## 120분 흐름
 
 | 경과 시간 | 진행 | 학생이 할 일 |
 |---|---|---|
-| 00:00–00:18 | CDC 필요성·직무 역량·프로젝트 | 관심 도메인 후보 메모 |
-| 00:18–00:33 | 아키텍처 세 장 | 역할 표 3줄 작성 |
-| 00:33–00:45 | 원천 모델·DML·사전 예측 | SQL [A]의 SELECT와 관찰표 기대값 작성 |
-| 00:45–01:10 | c/u/d 수집 대조 시연 | 단계별 before/after·offset·copies 기록 |
-| 01:10–01:15 | 휴식 | 필요하면 고정된 결과 화면 확인 |
-| 01:15–01:30 | 누락·중복·지연 | DELETE 결과 한 세트와 측정 한계 작성 |
-| 01:30–01:55 | 개인 설계 | 핵심 테이블 하나·DDL·기대 이벤트 |
-| 01:55–02:00 | 점검과 제출 | 수업 중 필수 초안 제출 |
+| 00:00–00:12 | OT·8회 로드맵 | 두 파일 준비, 오늘의 확인 범위 확인 |
+| 00:12–00:35 | 왜 CDC 레이크하우스인가 | 제출 양식 1절: CDC를 선택할 이유와 비용 정리 |
+| 00:35–01:05 | CDC·Iceberg 개념, 아키텍처 세 장 | 2절: 수집 경로·저장소·Catalog·복구 상태의 역할 정리 |
+| 01:05–01:10 | 휴식 | 5분 휴식 |
+| 01:10–01:35 | 저장소·실행 환경, ingest.sql 읽기, 사전 예측 | SQL [A]·[B]·[C], 제출 양식 3절과 4절 기대값 작성 |
+| 01:35–01:55 | 환불 INSERT·UPDATE·DELETE 수집 대조 | 4절 실제 before/after·offset·copies 기록, DELETE 지연 한 세트 확인 |
+| 01:55–02:00 | 점검·제출·2회차 안내 | 5절 체크리스트와 질문 정리, 두 파일 제출 |
 
-## 1. 수집 경로와 저장 내용
+## 1. 오늘 확인할 경로
 
-[아키텍처 세 장](architecture.md)을 보며 역할 표를 채웁니다.
+[아키텍처 세 장](architecture.md)을 보며 다음을 구분합니다.
 
-- Debezium은 초기 스냅샷과 PostgreSQL WAL 변경을 Kafka로 전달합니다. 기존 행의 스냅샷은 `op=r`, 이후 새 입력·수정·삭제는 `c/u/d`로 구분합니다. 오늘은 스냅샷 이후 새로 만든 시연 키를 관찰합니다.
-- Kafka에는 메시지 key와 value가 있습니다. Flink는 이 실습에서 **value 원문(payload)과 topic·partition·offset을 Bronze에 저장**합니다. Kafka key를 Bronze의 별도 컬럼으로 저장하지 않습니다.
-- Bronze 행에서 원천 PK는 payload의 before/after에서 찾습니다. DELETE는 after=null이므로 before의 PK를 확인합니다.
-- MinIO는 실제 데이터·metadata 파일, 별도 PostgreSQL Catalog는 테이블 위치 정보, Flink 상태 볼륨은 checkpoint/savepoint를 보관합니다.
-- Spark의 Silver 현재 상태와 dbt·Spark의 Gold 활용 테이블은 후속 회차에서 구현합니다. 오늘은 Airflow를 중지하고 Bronze까지 대조합니다.
+- **수집:** PostgreSQL → Debezium → Kafka → Flink → Iceberg Bronze.
+- **저장·메타데이터:** MinIO는 데이터와 Iceberg 메타데이터 파일을 저장하고, JDBC Catalog는 현재 테이블 메타데이터의 위치를 관리합니다. Flink checkpoint·savepoint는 별도 상태 볼륨에 저장됩니다.
+- **실행:** 강사는 맥미니의 Lima·Docker 환경에서 실행합니다. 학생은 공유 화면을 보고 예측과 관찰 결과를 작성합니다.
+- **후속 변환:** Spark SQL Silver와 dbt Gold는 별도 작업이 실행될 때 갱신됩니다. 수업 전 준비 작업과 달리 오늘 c/u/d 시연에서는 refresh를 실행하지 않습니다. Airflow도 정지합니다.
 
-## 2. 시연 전에 작성할 것 — 12분
+Bronze·Silver·Gold는 데이터 처리 계층입니다. Iceberg 메타데이터 JSON → manifest list → manifest → 데이터 파일의 내부 구조와 구분합니다.
 
-orders·payments는 준비 데이터입니다. 핵심 관찰 대상은 같은 refunds 한 행입니다. `refund_id`는 환불 PK이고 `payment_id`는 결제를 가리키는 FK입니다.
+## 2. 코드를 읽고 결과 예측하기 — 01:10–01:35
 
-1. 학생 SQL [A]의 UPDATE와 DELETE 뒤에 같은 `my-r1`을 조회하는 SELECT를 작성합니다.
-2. 제출 템플릿 2절의 기대 원천 행·before/after 열을 **미리** 채웁니다.
-3. UPDATE가 같은 환불의 금액 정정인지, 새 환불 추가인지 구분합니다.
+강사의 컨테이너·preflight 점검을 함께 보고, 학생은 SQL 파일을 작성합니다. 핵심 상시 서비스는 9개이며 Spark와 runner는 별개입니다. 내부 포트와 맥미니 접속 포트는 [강사 실행 안내](runbook.md)에서 구분합니다.
+
+### ingest.sql에서 확인할 네 곳
+
+SQL [A]와 제출 양식 3절에 짧게 정리합니다.
+
+1. `JdbcCatalog`·warehouse 설정: 테이블 메타데이터 위치와 실제 파일 저장소는 어디인가?
+2. `topic-pattern`·`format='raw'`: 어떤 토픽의 무엇을 payload로 저장하는가?
+3. checkpoint 설정: 데이터가 외부 조회에 보이려면 무엇이 추가로 성공해야 하는가?
+4. `WHERE payload IS NOT NULL`: 어떤 메시지를 제외하고 무엇을 보관하는가?
+
+### 같은 환불 한 건의 c/u/d 예측
+
+orders·payments는 준비 데이터입니다. `refund_id`는 환불 PK이고 `payment_id`는 결제를 가리키는 FK입니다.
+
+1. SQL [B]의 UPDATE·DELETE 뒤에 같은 `my-r1`을 조회하는 SELECT를 작성합니다.
+2. SQL [C]의 이벤트 예측과 제출 양식 4절의 **기대값**을 먼저 채웁니다.
+3. UPDATE가 새 환불 추가가 아니라 같은 환불의 금액 정정임을 확인합니다.
 
 | 변경 | 기대 원천 조회 | CDC 기대값 |
 |---|---|---|
@@ -47,26 +64,28 @@ orders·payments는 준비 데이터입니다. 핵심 관찰 대상은 같은 re
 | UPDATE | 같은 PK 한 행, 30000 | u / before.amount=20000 / after.amount=30000 |
 | DELETE | 해당 PK 0행 | d / before.amount=30000 / after=null |
 
-예제는 `REPLICA IDENTITY FULL`을 설정해 이전 amount를 관찰합니다. 모든 PostgreSQL 기본 설정에서 같은 before 값이 나온다는 뜻은 아닙니다. 개인 DDL에도 이번 관찰용 설정을 적습니다. [Debezium PostgreSQL 문서](https://debezium.io/documentation/reference/stable/connectors/postgresql.html#postgresql-events).
+예제 원천 테이블에는 `REPLICA IDENTITY FULL`을 설정해 이전 amount를 관찰합니다. 모든 PostgreSQL 기본 설정에서 같은 before 값이 나온다는 뜻은 아닙니다. 기존 행의 초기 스냅샷은 `op=r`이고, 오늘 새로 만드는 환불은 c/u/d로 추적합니다.
 
-## 3. 시연 중 작성할 것 — 25분
+## 3. 수집 결과 대조하기 — 01:35–01:55
 
-강사는 변경마다 원천·Kafka·Bronze를 대조하고 **요약 화면을 최소 60초 고정**합니다. 학생은 이때 실제 before/after, Kafka offset, bronze_copies만 기록합니다. 전체 JSON과 모든 타임스탬프를 받아쓰지 않습니다.
+강사는 **변경 실행 → 원천 조회 → wait → Kafka 이벤트 조회 → collect-check 요약** 순서로 진행합니다. 원천 변경 직후에는 Kafka 조회가 비어 있을 수 있어 도착을 기다린 뒤 보여줍니다. 각 단계 요약 화면을 최소 60초 유지합니다.
 
-강사가 확인할 근거:
+학생은 제출 양식 4절의 실제 before/after·Kafka offset·bronze_copies를 기록합니다. 원천 행 수와 op·PK·수집 위치는 강사와 함께 확인하며, 전체 JSON을 받아쓰지 않습니다. 요약의 `None`은 JSON의 `null`에 해당합니다.
 
-- Kafka key의 refund_id와 원천 PK가 같음.
-- 기대 op·before/after와 Kafka·Bronze의 내용·source.lsn이 같음.
-- 같은 (topic,partition,offset)의 Bronze 기록이 이번 새 키의 통제된 시연에서 하나씩 존재함 (`bronze_copies=1`).
-- DELETE 후 원천은 0행, Bronze에는 c/u/d 이력이 남음.
+| 확인할 것 | 판단 근거 |
+|---|---|
+| 같은 행을 추적하는가 | 원천 PK와 Kafka key의 refund_id 일치 |
+| 변경 내용이 맞는가 | 기대 op·before/after와 Kafka·Bronze 내용 대조 |
+| 같은 전달 위치가 저장됐는가 | topic·partition·offset 일치, 해당 위치의 bronze_copies=1 |
+| 삭제 이력이 남는가 | 원천 0행, 이번 환불 키의 Bronze c/u/d 3건 |
 
-Kafka에는 삭제 뒤 같은 key의 value=null tombstone이 있을 수 있습니다. 이 파이프라인은 null을 제외하고 non-null op=d를 Bronze에 남깁니다. 비교할 것은 Kafka 전체 건수 대신 non-null CDC 이벤트입니다. Kafka에 도착했어도 sink commit 전에는 Bronze에서 아직 안 보일 수 있습니다.
+Flink는 Kafka **value 원문과 수집 위치**를 Bronze에 저장합니다. Kafka key는 별도 Bronze 컬럼으로 저장하지 않으며 PK는 payload에서 찾습니다. DELETE는 after=null이므로 before.refund_id를 확인합니다. SQL [D]의 조회 예제도 before·after 양쪽을 조건에 포함합니다.
 
-PK가 같아도 c/u/d는 정상 이력입니다. 동일 Kafka 위치가 반복 저장된 경우와 같은 내용이 다른 offset으로 재전달된 경우는 구분해서 조사합니다. offset 순서는 같은 토픽·파티션 안에서만 비교하고 source.lsn만을 전역 고유 이벤트 ID로 쓰지 않습니다.
+Kafka의 value=null tombstone은 제외하고, non-null c/u/d와 초기 스냅샷 r 이벤트는 보관합니다. tombstone을 포함한 Kafka 메시지 수를 Bronze 행 수와 그대로 비교하지 않습니다. **PK가 같아도 c/u/d는 서로 다른 정상 이력**입니다. 같은 Kafka 위치가 반복 저장됐는지와 다른 offset으로 재전달됐는지는 구분합니다. offset 순서는 같은 토픽·파티션 안에서 비교하고 source.lsn을 전역 고유 이벤트 ID로 사용하지 않습니다.
 
-## 4. 시연 뒤 작성할 것 — 15분
+### DELETE 결과에서 지연 한 세트 확인
 
-누락·중복 판단을 설명한 뒤 **DELETE 요약 한 세트만** 지연 표에 옮깁니다.
+마지막 요약의 세 값만 제출 양식 4절에 옮깁니다.
 
 | 값 | 뜻 |
 |---|---|
@@ -74,36 +93,22 @@ PK가 같아도 c/u/d는 정상 이력입니다. 동일 Kafka 위치가 반복 �
 | ingested_at | Flink에서 CURRENT_TIMESTAMP를 평가한 처리 시각 |
 | wait_observed_seconds | wait 명령 시작 후 Bronze에서 처음 관찰할 때까지의 시간 |
 
-`wait --evidence` 기록이 collect-check 요약의 wait_observation에 연결됩니다. 기록이 없으면 null이며 추정값을 만들지 않습니다.
+`wait --evidence` 기록이 상세 대조 자료의 wait_observation에 연결되고 요약에는 관찰 시간이 표시됩니다. 기록이 없으면 미기록으로 남기며 값을 추정하지 않습니다.
 
-이 값만으로 원천 commit부터 Iceberg 조회 가능 시점까지의 전체 지연을 계산할 수 없습니다. 이번 sink는 checkpoint 완료 후 Iceberg commit을 시도하며, 처리 시점·checkpoint 완료·commit·조회 간격에 따라 관찰 지연이 달라집니다. **최소 한 checkpoint 주기를 반드시 기다린다고 단정하지 않습니다.** checkpoint 성공만으로 sink commit 성공을 보장하지도 않습니다. [Iceberg Flink Writes](https://iceberg.apache.org/docs/latest/flink-writes/).
+checkpoint 완료 후 Iceberg commit을 시도하며, **commit 성공과 실제 조회**까지 확인해야 합니다. checkpoint 성공만으로 commit 성공을 보장하지 않고 DML과 스냅샷이 항상 1:1인 것도 아닙니다. 위 세 값만으로 원천 commit부터 분석 마트 반영까지의 전체 지연을 계산할 수는 없습니다.
 
 | 관찰 | 먼저 확인할 구간 |
 |---|---|
 | 원천만 바뀜 | commit, 수집 대상, connector |
 | Kafka에 있고 Bronze에 없음 | 토픽 패턴, Flink 처리·checkpoint, sink commit·저장소 접근 |
-| Bronze는 최신, Silver·Gold는 과거 값 | 후속 변환·갱신 여부 |
+| Bronze는 최신, Silver·Gold는 과거 값 | 별도 변환·갱신 실행 여부 |
 
-한 키의 c/u/d 대조와 EXACTLY_ONCE 설정 한 줄만으로 전체 무누락·중복 방지·복구를 보장했다고 쓰지 않습니다. 재전달·장애 복구 실험은 이후 회차에서 수행합니다.
+이번 새 키의 c/u/d 대조를 전체 데이터의 무누락·중복 방지·장애 복구 보장으로 확대하지 않습니다. 재전달·복구 실험은 후속 회차에서 진행합니다.
 
-## 5. 개인 설계 — 25분, 핵심 테이블 하나
+## 4. 제출과 다음 회차
 
-처음 5분은 주제 선택과 작성법 안내입니다. 나머지 **20분은 체크리스트 화면을 고정**하고 각자 작성합니다.
+SQL [A] 코드 읽기, [B] 두 SELECT, [C] 공통 이벤트 예측과 `submission.md` 1–5절을 제출합니다. SQL [D]는 제공된 조회를 읽고 DELETE 조건을 이해하는 참고용입니다. 별도 서버 실행 결과를 제출할 필요는 없습니다.
 
-예약 변경 이력, 물류 상태 동기화, 상품 정보 레이크, 구독 상태 관리, 결제·환불 정정 중 선택하거나 자신의 주제를 고릅니다. [주제별 최소 범위와 확장 실험](why-cdc-and-projects.md#프로젝트별-최소-완성-범위와-선택-확장)을 참고합니다.
+실제 시연 대신 이전 리허설 자료를 봤다면 관찰 방식을 그렇게 표시합니다. 확인하지 못한 값은 미확인으로 남기고 질문을 적습니다. 두 파일은 강사가 안내한 제출 채널에 전달합니다. Git 제출을 안내받았다면 본인 작업 저장소에서 commit·push하며 공용 원본 저장소에 직접 push하지 않습니다.
 
-### 수업 중 필수
-
-- 주제와 CDC 선택 이유 한 문장.
-- 핵심 변경 테이블 **하나**의 한 행 의미·PK·수정 컬럼·삭제 방식.
-- 해당 DDL과 `ALTER TABLE ... REPLICA IDENTITY FULL;` 초안.
-- 같은 PK의 c/u/d 기대 op와 before/after. 개인 DML 전체는 과제로 완성해도 됩니다.
-- 원천부터 Bronze까지 자신의 테이블·토픽을 넣은 경로 한 줄. 나머지 테이블은 이름만 적습니다.
-
-### 다음 회차 전 과제
-
-나머지 테이블 1–2개의 명세·DDL·관계를 확장하고 개인 DML·원천 SELECT를 완성합니다. 수집 범위·목표 지연·보존과 publication/connector/Flink 연결 계획도 보완합니다. DDL만 만들면 새 테이블이 자동 수집되지는 않습니다.
-
-## 제출
-
-`student-worksheet.sql`과 `submission.md`를 강사가 안내한 채널에 제출합니다. 필수 초안과 미완성 과제를 구분해서 표시합니다. 프로젝트 발표는 8회 스터디 뒤 별도 일정입니다.
+2회차에는 공통 예제의 PostgreSQL → Debezium → Kafka 수집을 더 자세히 다룹니다. 개인 DDL·개인 DML·지표 설계는 이번 제출·과제에 포함하지 않습니다. 관심 도메인은 선택 메모만 남겨도 됩니다. 프로젝트 발표는 8회 스터디 뒤 별도 일정입니다.

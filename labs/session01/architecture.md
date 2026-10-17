@@ -18,7 +18,7 @@
 
 ```mermaid
 flowchart TB
-  student[학생 노트북<br/>SQL · 개인 설계서 작성] --> submission[개인 제출물<br/>SQL · 수집 검증 · 원천 명세]
+  student[학생 노트북<br/>공통 SQL · 이벤트 예측 작성] --> submission[개인 제출물<br/>SQL · 수집 대조 기록]
   teacher[강사 노트북<br/>온라인 화면 공유] -. SSH .-> pg
   repo[GitHub<br/>실습 코드 · 가이드] -. 코드 배포 .-> pg
   subgraph mini[Mac mini · Lima Linux ARM64 · Docker Compose]
@@ -42,7 +42,7 @@ flowchart TB
   end
 ```
 
-1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 기대 이벤트·원천 확인 SQL·개인 파이프라인 설계를 작성한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림은 1회차 Bronze 검증과 후속 Silver·Gold를 구분한다.
+1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 공통 예제의 기대 이벤트·원천 확인 SQL·수집 대조 기록을 작성한다. 개인 도메인·테이블 설계 확정은 3회차에 진행한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림은 1회차 Bronze 검증과 후속 Silver·Gold를 구분한다.
 
 ## 예제 원천 모델
 
@@ -81,27 +81,12 @@ erDiagram
 
 Flink는 Bronze에 append 이력을 저장한다. 원천에서 삭제해도 c/u/d 이력은 남는다. Kafka null tombstone은 Flink 입력에서 제외하며 non-null op=d는 보관한다. source.lsn은 원천 버전 정보이고 Kafka 위치는 토픽·파티션·오프셋을 함께 사용한다. Kafka key는 Bronze 별도 컬럼으로 저장하지 않으며 원천 PK는 payload의 before/after에서 추출한다. 초기 스냅샷은 r, 새 변경은 c/u/d다.
 
-## 개인 프로젝트 작성 틀
+## 공통 예제에서 확인할 질문
 
-원천 테이블 2–3개와 변경 대상 키를 자신의 도메인으로 바꾼다. 목적지의 지표를 구체적으로 계산하는 작업은 후속 회차에서 진행한다.
+- 같은 refund_id의 금액이 20000에서 30000으로 바뀌면 원천 행과 Bronze 이력 행 수는 각각 어떻게 달라지는가?
+- DELETE 뒤 after가 null일 때 원천 PK와 이전 금액은 어디에서 찾는가?
+- Kafka의 어떤 위치 정보로 Bronze의 같은 이벤트를 대조하는가?
+- null tombstone을 제외해도 실제 삭제 이력은 남는가?
+- Kafka에 있고 Bronze에 없으면 어느 구간을 확인하는가?
 
-```mermaid
-flowchart LR
-  source[PostgreSQL<br/>내 테이블 A / B / C] --> cdc[Debezium / Kafka Connect<br/>publication · include list]
-  cdc --> kafka[Kafka<br/>테이블별 토픽 · 이벤트 key]
-  kafka --> flink[Flink<br/>원문 · 수집 위치]
-  flink --> bronze[Iceberg Bronze<br/>변경 이력]
-  bronze -. 이후 회차 .-> downstream[Spark Silver / dbt Gold<br/>최신 상태 · 활용 테이블]
-```
-
-그림 아래에 다음을 적는다.
-
-- 수집 목적과 포함·제외할 원천 데이터.
-- 테이블 한 행의 의미, PK/FK, 수정·삭제 방식.
-- publication / connector 수집 대상 / Flink 토픽 패턴 연결 계획.
-- Bronze에 보관할 원문과 위치·원천 버전 정보.
-- 원천 변경부터 Bronze 조회까지 목표 지연과 이력 보존 계획.
-- INSERT·UPDATE·DELETE의 기대 이벤트와 대조 방법.
-- Kafka에 있는데 Bronze에 없을 때 조사 순서.
-
-예약·물류·구독 등 각자 주제를 선택한다. 설정 미확정 항목은 다음 회차의 질문으로 남긴다.
+[학생 SQL](sql/student-worksheet.sql)에서 예측하고 [제출 양식](submission-template.md) 4절에 실제 결과를 기록한다. 오늘은 별도 개인 아키텍처를 작성하지 않는다. 개인 도메인·테이블 설계는 3회차에 확정하며 후속 설계에는 [프로젝트 설계서](../../docs/project-template.md)를 사용한다.

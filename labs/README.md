@@ -2,26 +2,37 @@
 
 Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명하는 과정이 아니다. 이미 배운 도구로 개인 프로젝트를 설계하고, 새로 다루는 CDC·Flink·Iceberg·dbt를 연결한다. 수업당 2시간, 개인 구현과 기록은 회차 사이에 진행한다.
 
-| 회차 | 수업에서 구현·검토할 것 | 개인 프로젝트 산출물 |
+| 회차 | 수업에서 구현·검토할 것 | 학생 산출물 |
 |---|---|---|
-| 1 | 전체 흐름 실행, 도메인·지표·허용 지연 정의, PostgreSQL 키 설계 | 설계서와 원천 DDL, 변경 시나리오 |
-| 2 | Debezium 초기 스냅샷/WAL, Kafka 원문의 before/after/op/LSN 확인 | 입력·수정·삭제 이벤트 표본과 토픽 설계 |
-| 3 | Flink SQL → Iceberg Bronze, 체크포인트와 커밋 구분 | Bronze 조회 증거, 원천→조회 지연 기록 |
-| 4 | Spark SQL로 최신 상태 MERGE, 삭제 표시, 과거 이벤트 재전달 | Silver 모델과 변경·중복 검증 |
-| 5 | dbt 모델 의존성, 주문별/일별 마트, 테스트와 지표 정의 | 개인 Gold 모델, 기대값을 확인하는 테스트 |
+| 1 | OT·CDC/Iceberg 개념·아키텍처·환경 확인, 공통 환불 c/u/d 대조 | 공통 예제 SQL·이벤트 사전 예측, 원천/Kafka/Bronze 관찰 기록 |
+| 2 | 공통 예제의 Debezium 초기 스냅샷/WAL, Kafka key·before/after/op/LSN | 공통 이벤트 표본과 수집 설정·동작 기록 |
+| 3 | Flink SQL → Iceberg Bronze, 체크포인트·커밋·지연 측정, 개인 설계 확정 | Bronze 조회 증거와 지연 기록, 개인 도메인·테이블 명세 |
+| 4 | Spark SQL로 최신 상태 MERGE, 삭제 표시, 과거 이벤트 재전달 | 개인 Silver 모델과 변경·중복 검증 |
+| 5 | dbt 모델 의존성, 마트·테스트와 지표 정의 | 개인 Gold 모델, 기대값을 확인하는 테스트 |
 | 6 | 전체 재계산 기준선과 증분 처리 범위 비교, 과거 기간 정정 | 증분 설계·재처리 SQL·전체 계산 결과 대조 |
-| 7 | TaskManager 장애·복구, 체크포인트 간격과 파일 수·지연 관찰 | 복구 기록, 같은 조건의 개선 전후 비교 |
-| 8 | Airflow 자동 실행, 전체 흐름 점검, 남은 오류 수정, 실행 문서 정리 | 재현 가능한 코드와 검증 기록 |
+| 7 | Iceberg 작은 파일·rewrite_data_files·파티션·쿼리 튜닝 | 같은 조건에서 파일·쿼리 지표의 개선 전후 비교 |
+| 8 | Airflow 연동·장애 복구 점검·최종 리뷰·실행 문서 정리 | 재현 가능한 코드와 검증·복구 기록 |
 
-**발표는 별도 날짜에 진행한다.** 8회차를 발표 시간으로 사용하지 않는다.
+**발표는 별도 날짜에 진행한다.** 8회차를 발표 시간으로 사용하지 않는다. 위 후반 회차의 튜닝·확장은 학생이 구현·측정할 학습 목표이며 현재 참고 코드에 모두 구현됐다는 뜻은 아니다.
 
-## 1–3회차: 변경이 어디까지 도착했는가
+## 1–3회차: 공통 예제로 수집을 익힌 뒤 개인 설계 확정
 
-1. `scripts/bootstrap.sh`로 예제를 올린다. [운영 방법](../docs/operations.md)의 터널로 Flink UI를 연다.
-2. `sql/01-source.sql`의 키와 관계를 자신의 도메인으로 다시 설계한다.
-3. PostgreSQL에 INSERT/UPDATE/DELETE를 한 번씩 수행하고 Bronze에서 해당 PK의 `payload`, `topic`, `kafka_offset`을 조회한다.
-4. `op=r/c/u/d`, `before`, `after`, `source.lsn`의 실제 차이를 기록한다. Kafka tombstone과 DELETE envelope를 구분한다.
-5. Flink UI의 체크포인트 성공만으로 완료를 판단하지 말고 Iceberg SQL 결과에서 변경을 확인한다.
+### 1회차 — 예측과 관찰
+
+[1회차 가이드](session01/student-guide.md)의 120분 흐름을 따른다. 실행은 강사가 맥미니에서 수행하고 학생은 로컬 파일을 작성한다.
+
+1. CDC의 선택 이유와 운영 비용, 아키텍처 세 관점의 역할을 정리한다.
+2. 공통 refunds의 20000 입력 → 30000 정정 → 삭제를 예측하고 원천 확인 SELECT를 작성한다.
+3. 강사 시연에서 같은 PK의 op·before/after와 Kafka·Bronze 수집 위치·copies를 대조한다.
+4. DELETE 이후 원천 0행과 Bronze c/u/d 이력, tombstone 제외, 지연 관찰 값의 의미를 확인한다.
+5. SQL 파일과 submission.md를 제출한다. 개인 DDL·DML은 이번 과제가 아니다.
+
+### 2–3회차 — 수집 설정과 개인 설계
+
+1. 공통 예제로 PostgreSQL publication·replica identity, Debezium snapshot·WAL, Kafka 토픽·key를 확인한다.
+2. Flink 입력·append 적재와 checkpoint 이후 sink commit을 구분하고 실제 Iceberg SQL 조회로 반영을 확인한다.
+3. 수집 지연을 측정할 때 원천 변경·Flink 처리·commit·첫 조회의 시각과 측정 기준을 구분한다.
+4. 3회차에 개인 도메인·원천 테이블 설계를 확정한다. [프로젝트 설계서](../docs/project-template.md)를 사용해 PK/FK·변경·삭제와 수집 연결 범위를 정의한다.
 
 ## 4–5회차: 빨리 도착해도 숫자가 틀리면 안 된다
 
@@ -42,16 +53,16 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 
 완료 조건은 실행 시간이 짧아지는 것만이 아니다. 신규·수정·삭제·과거 기간 변경·재시도 모두에서 기준 결과와 일치해야 한다.
 
-## 7–8회차: 실제로 복구하고 자동 실행한다
+## 7–8회차: 성능 튜닝과 운영 점검
 
-1. `scripts/recovery.sh`로 TaskManager가 멈춘 동안 변경을 넣고 복구 후 결과를 확인한다.
-2. 원천 변경 시각, Bronze에서 처음 조회된 시각, Gold 검증 시각을 구분해 기록한다.
-3. 체크포인트 간격을 바꿔 지연·파일 수를 비교한다. 실행 중인 작업에 설정을 반영하려면 savepoint를 이용한 재기동 절차가 필요하다.
+1. 7회차에는 비교할 데이터·쿼리·실행 조건을 먼저 고정하고 작은 파일과 파티션을 관찰한다. rewrite_data_files 전후 파일 수·크기·조회 시간을 비교하며 실제 측정 없이 성능 향상을 주장하지 않는다.
+2. 체크포인트 간격에 따른 지연·파일 수 비교는 savepoint 재기동을 포함해 조건을 기록한다.
+3. 8회차에는 `scripts/recovery.sh`로 TaskManager가 멈춘 동안 변경을 넣고 복구 후 결과를 확인한다. 원천 변경·Bronze 첫 조회·Gold 검증 시점을 구분한다.
 4. Airflow DAG를 수동 실행한 뒤 주기 실행 로그와 dbt 테스트 결과를 확인한다.
-5. 다른 사람이 README만 보고 시작·조회·중지할 수 있는지 점검한다.
+5. 다른 사람이 README를 보고 시작·조회·중지할 수 있는지 점검하고 남은 오류를 정리한다.
 
-Iceberg snapshot 만료나 orphan 파일 삭제는 복구 실습과 동시에 진행하지 않는다. Flink가 참조하는 메타데이터와 복구 지점의 관계를 확인한 뒤 별도 실습으로 다룬다.
+데이터 파일 compaction과 메타데이터 보존·snapshot 만료·orphan 파일 정리는 서로 다른 작업이다. snapshot 만료나 orphan 파일 삭제를 복구 실험과 동시에 진행하지 않는다. Flink가 참조하는 메타데이터와 복구 지점의 관계를 먼저 확인한다.
 
 ## 회차별 상세 자료
 
-- [1회차: 결제 한 건이 분석 지표가 되기까지](session01/README.md) — 강사용 120분 진행안, 학생 SQL 실습, 개인 설계서, 프로젝트 아키텍처와 맥미니 실행 순서.
+- [1회차: CDC 레이크하우스 이해와 공통 예제 수집 확인](session01/README.md) — 최종 강의안의 120분 흐름, 공통 예측 SQL·수집 대조 제출 양식, 아키텍처 세 장과 맥미니 실행 순서.

@@ -74,7 +74,7 @@ DELETE 요약의 kafka_ts·ingested_at·wait_observed_seconds를 보여주며 �
 
 ## 01:55–02:00 — 정리와 다음 회차
 
-SQL [A]·[B]·[C]에서 확인한 내용과 예측·실제 결과의 차이를 함께 정리하고 질문을 받는다. SQL [D]는 제공된 Bronze 조회 참고용이며 별도 실행 과제가 아니다. submission.md를 작성하거나 두 파일을 제출받는 시간은 두지 않는다. [선택 복습 메모](submission-template.md)는 스스로 정리하고 싶은 학생에게 참고 자료로만 안내한다.
+SQL [A]·[B]·[C]에서 확인한 내용과 예측·실제 결과의 차이를 함께 정리하고 질문을 받는다. SQL [D]는 제공된 Bronze 조회 참고용이며 별도 실행 과제가 아니다. submission.md를 작성하거나 두 파일을 제출받는 시간은 두지 않는다. [수업 후 복습 양식 — 수업 중 사용 안 함](submission-template.md)을 안내하고, 제출 방법과 기한은 수업 마무리에 설명한다.
 
 2회차는 PostgreSQL·Debezium·Kafka 수집 심화다. 오늘 개인 DDL·DML을 요구하지 않는다. 관심 도메인은 선택 메모만 남기도록 안내하고 설계 확정은 3회차에 진행한다.
 

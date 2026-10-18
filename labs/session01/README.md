@@ -8,7 +8,7 @@
 
 - [학생 실습 가이드와 120분 흐름](student-guide.md)
 - [학생 SQL — 코드 읽기·공통 예제 예측](sql/student-worksheet.sql)
-- [선택 복습 메모 — 수업 중 작성·제출하지 않음](submission-template.md)
+- [수업 후 복습 양식 — 수업 중 사용 안 함](submission-template.md)
 - [강사용 120분 진행안](instructor-guide.md)
 - [맥미니 시연 명령·포트·장애 대응](runbook.md)
 - [데이터 흐름·저장/메타데이터·실행 환경 세 장](architecture.md)

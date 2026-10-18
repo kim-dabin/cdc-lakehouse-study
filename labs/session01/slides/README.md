@@ -6,7 +6,7 @@
 
 - [학생 실습 가이드](../student-guide.md)
 - [학생 SQL](../sql/student-worksheet.sql)
-- [선택 복습 메모 — 수업 중 작성·제출하지 않음](../submission-template.md)
+- [수업 후 복습 양식 — 수업 중 사용 안 함](../submission-template.md)
 - [강사용 진행안](../instructor-guide.md)
 - [맥미니 실행 순서](../runbook.md)
 - [아키텍처 세 장](../architecture.md)

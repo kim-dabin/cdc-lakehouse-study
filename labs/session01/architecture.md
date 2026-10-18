@@ -18,7 +18,7 @@
 
 ```mermaid
 flowchart TB
-  student[학생 노트북<br/>공통 SQL · 이벤트 예측 작성] --> submission[개인 제출물<br/>SQL · 수집 대조 기록]
+  student[학생 노트북<br/>공통 SQL · 이벤트 예측 작성] --> comparison[공유 화면에서<br/>예측과 수집 결과 대조]
   teacher[강사 노트북<br/>온라인 화면 공유] -. SSH .-> pg
   repo[GitHub<br/>실습 코드 · 가이드] -. 코드 배포 .-> pg
   subgraph mini[Mac mini · Lima Linux ARM64 · Docker Compose]
@@ -42,7 +42,7 @@ flowchart TB
   end
 ```
 
-1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 공통 예제의 기대 이벤트·원천 확인 SQL·수집 대조 기록을 작성한다. 개인 도메인·테이블 설계 확정은 3회차에 진행한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림은 1회차 Bronze 검증과 후속 Silver·Gold를 구분한다.
+1회차에는 미리 구성한 수집 경로에서 원천 INSERT·UPDATE·DELETE와 Kafka·Bronze 이벤트를 대조한다. 실행은 강사가 맡고 학생은 공통 예제의 기대 이벤트·원천 확인 SQL을 작성하고 수집 결과를 함께 대조한다. 개인 도메인·테이블 설계 확정은 3회차에 진행한다. Airflow는 중지하며 Silver·Gold는 후속 회차의 역할만 설명한다. 그림은 1회차 Bronze 검증과 후속 Silver·Gold를 구분한다.
 
 ## 예제 원천 모델
 
@@ -89,4 +89,4 @@ Flink는 Bronze에 append 이력을 저장한다. 원천에서 삭제해도 c/u/
 - null tombstone을 제외해도 실제 삭제 이력은 남는가?
 - Kafka에 있고 Bronze에 없으면 어느 구간을 확인하는가?
 
-[학생 SQL](sql/student-worksheet.sql)에서 예측하고 [제출 양식](submission-template.md) 4절에 실제 결과를 기록한다. 오늘은 별도 개인 아키텍처를 작성하지 않는다. 개인 도메인·테이블 설계는 3회차에 확정하며 후속 설계에는 [프로젝트 설계서](../../docs/project-template.md)를 사용한다.
+[학생 SQL](sql/student-worksheet.sql)에서 예측하고 공유 화면의 실제 수집 결과와 함께 대조한다. 수업 중 submission.md 작성이나 파일 제출은 진행하지 않으며 관찰 메모는 선택이다. 오늘은 별도 개인 아키텍처를 작성하지 않는다. 개인 도메인·테이블 설계는 3회차에 확정하며 후속 설계에는 [프로젝트 설계서](../../docs/project-template.md)를 사용한다.

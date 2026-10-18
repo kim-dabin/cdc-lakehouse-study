@@ -55,5 +55,6 @@ WHERE topic = 'cdc.public.refunds'
        OR get_json_object(payload, '$.before.refund_id') = 'my-r1')
 ORDER BY partition_id, kafka_offset;
 
--- 실제 before/after·offset·copies는 submission.md 4절에 기록합니다.
--- 개인 테이블 DDL·DML 설계는 이번 제출·과제에 포함하지 않습니다.
+-- 실제 before/after·offset·copies는 강사 화면에서 예측과 함께 대조합니다.
+-- 관찰 메모는 선택이며, 수업 중 submission.md 작성이나 파일 제출은 하지 않습니다.
+-- 오늘 개인 테이블 DDL·DML은 작성하지 않습니다. 개인 설계 확정은 3회차에 진행합니다.

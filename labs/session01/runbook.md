@@ -1,12 +1,12 @@
 # 1회차 강사용 실행 순서 — CDC 수집 검증
 
-모든 실행 명령은 **맥미니의 프로젝트 폴더**에서 사용한다. 학생은 로컬에서 공통 예제 SQL·이벤트 예측과 수집 관찰 기록을 작성하며 학생별 파일을 서버에서 실행하지 않는다. 개인 설계는 3회차에 확정한다. 핵심 시연은 같은 환불 PK의 INSERT·UPDATE·DELETE를 원천, Kafka, Iceberg Bronze에서 대조한다. Silver·Gold 갱신은 이번 핵심 시연에서 실행하지 않는다.
+모든 실행 명령은 **맥미니의 프로젝트 폴더**에서 사용한다. 학생은 로컬에서 공통 예제 SQL·이벤트 예측을 작성하고 수집 결과를 함께 대조하며 학생별 파일을 서버에서 실행하지 않는다. 개인 설계는 3회차에 확정한다. 핵심 시연은 같은 환불 PK의 INSERT·UPDATE·DELETE를 원천, Kafka, Iceberg Bronze에서 대조한다. Silver·Gold 갱신은 이번 핵심 시연에서 실행하지 않는다.
 
 [수정 큐시트 재실행·재기동 확인 기록](cuesheet-rerun-20261018.md). 앞선 실행은 [2026-10-18 점검 기록](classcheck-20261018.md)에 보관한다.
 
 ## 최종 강의안과 연결
 
-현재 [120분 진행안](instructor-guide.md)에 따라 01:10–01:25 환경·코드를 확인하고, 01:25–01:35 준비 데이터·사전 예측, 01:35–01:55 환불 c/u/d 대조를 진행한다. 관찰 결과는 [제출 양식](submission-template.md) 4절에 기록한다. 학생 SQL은 [A] 코드 읽기, [B] 원천 SELECT, [C] 이벤트 예측, [D] Bronze 조회 참고로 구성한다.
+현재 [120분 진행안](instructor-guide.md)에 따라 01:10–01:25 환경·코드를 확인하고, 01:25–01:35 준비 데이터·사전 예측, 01:35–01:55 환불 c/u/d 대조를 진행한다. 수업 중 submission.md 작성이나 파일 제출은 진행하지 않는다. 수집 결과 메모는 선택이다. 학생 SQL은 [A] 코드 읽기, [B] 원천 SELECT, [C] 이벤트 예측, [D] Bronze 조회 참고로 구성한다.
 
 ## 실행 환경과 포트
 
@@ -76,7 +76,7 @@ cat labs/session01/sql/02-refund.sql
 ./labs/session01/lab.sh "$CASE_ID" collect-check --stage insert --summary --evidence
 ```
 
-**요약 출력 화면을 최소 60초 고정**하고 학생이 실제 before/after·offset·bronze_copies를 기록하게 한다. 원천 같은 refund_id 한 행 amount=20000. Kafka key의 refund_id 일치, op=c, before=null, after.amount=20000. Bronze에 같은 topic/partition/offset과 이벤트 내용. 요약의 op=c, bronze_copies=1, passed=True를 확인한다. 전체 checks는 증거 JSON에 남는다.
+**요약 출력 화면을 최소 60초 고정**하고 학생과 예측·실제 before/after·offset·bronze_copies를 대조한다. 원천 같은 refund_id 한 행 amount=20000. Kafka key의 refund_id 일치, op=c, before=null, after.amount=20000. Bronze에 같은 topic/partition/offset과 이벤트 내용. 요약의 op=c, bronze_copies=1, passed=True를 확인한다. 전체 checks는 증거 JSON에 남는다.
 
 ## 3. UPDATE: 같은 키와 before/after
 
@@ -104,7 +104,7 @@ cat labs/session01/sql/04-delete-optional.sql
 ./labs/session01/lab.sh "$CASE_ID" collect-check --stage delete --summary --evidence
 ```
 
-**요약 화면을 최소 60초 고정**하고 마지막 지연 한 세트까지 기록하게 한다. 원천 해당 PK는 0행. Kafka op=d, before.amount=30000, after=null. Bronze에는 c/u/d 세 이벤트가 남는다. Kafka key/value와 null tombstone을 구분한다. Flink 원문 적재 SQL은 tombstone null을 제외하므로 tombstone까지 포함한 Kafka 메시지 수와 Bronze 행 수가 다를 수 있다.
+**요약 화면을 최소 60초 고정**하고 마지막 지연 값의 의미까지 함께 확인한다. 원천 해당 PK는 0행. Kafka op=d, before.amount=30000, after=null. Bronze에는 c/u/d 세 이벤트가 남는다. Kafka key/value와 null tombstone을 구분한다. Flink 원문 적재 SQL은 tombstone null을 제외하므로 tombstone까지 포함한 Kafka 메시지 수와 Bronze 행 수가 다를 수 있다.
 
 `kafka`와 `collect-check`는 독립적인 읽기 전용 소비자를 사용하며 Flink consumer group의 offset을 변경하지 않는다. 환불 토픽의 시작부터 호출 시점 end offset까지 읽어 이번 key만 출력하고 스캔은 30초로 제한한다. 오래 쌓인 실습 환경에서 timeout이 나면 수업 중 전체 Kafka 데이터를 삭제하지 말고 리허설 기록으로 전환한다.
 
@@ -122,7 +122,7 @@ cat labs/session01/sql/04-delete-optional.sql
 
 wait --evidence는 wait-EVENT.json에 대기 시작·관찰 시각과 관찰 시간을 저장한다. collect-check가 이를 wait_observation으로 연결한다. 기록이 없으면 null이다. 요약은 해당 단계 이벤트만 보여주고 --evidence에는 전체 대조 자료와 -summary.json을 함께 보관한다.
 
-wait 출력은 대기 시작 이후 첫 Bronze 관찰 시간이다. `kafka_ts`와 `ingested_at` 차이는 전체 commit 지연이 아니다. 학생은 DELETE 요약의 kafka_ts, ingested_at, wait_observed_seconds 한 세트만 기록하고 의미를 구분한다. 원천 commit이나 Iceberg commit 시각을 이 값으로 대신하지 않는다.
+wait 출력은 대기 시작 이후 첫 Bronze 관찰 시간이다. `kafka_ts`와 `ingested_at` 차이는 전체 commit 지연이 아니다. 학생과 DELETE 요약의 kafka_ts, ingested_at, wait_observed_seconds를 보며 각 값의 의미를 구분한다. 원천 commit이나 Iceberg commit 시각을 이 값으로 대신하지 않는다.
 
 증거는 `artifacts/runs/session01/CASE_ID/collection-insert.json`, `collection-update.json`, `collection-delete.json`에 저장된다. 값 비교가 완료된 뒤 필요한 증거만 수업 자료로 복사한다.
 
@@ -137,7 +137,7 @@ wait 출력은 대기 시작 이후 첫 Bronze 관찰 시간이다. `kafka_ts`�
 | 예상 밖 이벤트 / 중복 | 위치와 내용을 보존. 새 키로 핵심 시나리오를 다시 확인 |
 | Silver·Gold는 과거 값 | 핵심 CDC 수집 시연과 별도. 오늘 refresh를 실행하지 않음 |
 
-학생은 제출 양식 4절에 조사할 구간을 적고, 과거 리허설로 전환했다면 관찰 방식을 표시한다. 같은 장애를 20분 동안 공개 디버깅하지 않고 종료·제출 시간을 확보한다.
+학생과 조사할 구간을 함께 짚고, 과거 리허설로 전환했다면 과거 기록이라는 점을 안내한다. 같은 장애를 20분 동안 공개 디버깅하지 않고 정리·질문 시간을 확보한다.
 
 ## 수업 종료
 

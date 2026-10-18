@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker><marker id="arrow-today" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#397abd"/></marker></defs><rect width="1440" height="1010" fill="#f5f7fb"/><style>text{font-family:Arial,'Apple SD Gothic Neo','Noto Sans CJK KR',sans-serif} .title{font-size:30px;font-weight:700;fill:#14243a}.sub{font-size:17px;fill:#52637b}.label{font-size:20px;font-weight:700;fill:#14243a}.body{font-size:16px;fill:#44566e}.small{font-size:14px;fill:#52637b}.scope-today{font-size:17px;font-weight:700;fill:#fff}.scope-detail{font-size:14px;fill:#3975aa}.scope-future{font-size:14px;font-weight:700;fill:#6d7d91}</style>
 <text x="42" y="54" class="title" text-anchor="start">1회차 공통 예제 — 변경 데이터 수집 확인</text>
-<text x="42" y="84" class="sub" text-anchor="start">강사가 맥미니에서 실행 · 학생은 공통 SQL과 수집 대조 기록 작성</text>
+<text x="42" y="84" class="sub" text-anchor="start">강사가 맥미니에서 실행 · 학생은 공통 SQL 작성과 수집 결과 대조</text>
 <rect x="42" y="115" width="330" height="90" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="60" y="147" class="label" text-anchor="start">학생 노트북</text>
-<text x="60" y="175" class="body" text-anchor="start">공통 SQL · 이벤트 예측·관찰 기록</text>
+<text x="60" y="175" class="body" text-anchor="start">공통 SQL · 이벤트 예측·결과 대조</text>
 <rect x="460" y="115" width="330" height="90" rx="14" fill="#fff" stroke="#d6dfec"/>
 <text x="478" y="147" class="label" text-anchor="start">GitHub</text>
-<text x="478" y="175" class="body" text-anchor="start">실습 자료 · 제출 양식</text>
+<text x="478" y="175" class="body" text-anchor="start">실습 코드 · 학생 SQL</text>
 <path d="M372,160 L450,160" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
 <text x="845" y="149" class="body" text-anchor="start">강사 노트북 → SSH → Mac mini</text>
 <text x="845" y="176" class="small" text-anchor="start">실행 화면과 수집 대조 결과 공유</text>
@@ -80,7 +80,7 @@
 <text x="996" y="742" class="body" text-anchor="start">복구 실습은 후속 회차</text>
 <text x="52" y="814" class="label" text-anchor="start">오늘은 원천 변경과 Kafka·Bronze 수집 결과를 대조</text>
 <text x="52" y="844" class="body" text-anchor="start">같은 환불의 INSERT → UPDATE → DELETE → 원천·Kafka·Bronze 내용과 수집 위치 확인</text>
-<text x="52" y="872" class="small" text-anchor="start">학생 작성: 공통 SELECT · 변경 이벤트 예측 · before/after·offset·copies 관찰 기록</text>
+<text x="52" y="872" class="small" text-anchor="start">학생 활동: 공통 SELECT 작성 · 변경 이벤트 예측 · before/after·offset·copies 대조</text>
 <text x="42" y="937" class="label" text-anchor="start">오늘 확인: 환불 20,000원 생성 → 30,000원 정정 → 환불 행 삭제</text>
 <text x="42" y="970" class="sub" text-anchor="start">결제 100,000원은 준비 데이터입니다. Silver·Gold 갱신은 후속 회차, 개인 프로젝트 설계는 3회차에 진행합니다.</text>
 </svg>

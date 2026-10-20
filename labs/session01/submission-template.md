@@ -25,21 +25,22 @@
 
 ## 3. 환경 확인과 ingest.sql 읽기
 
+- 개인 환경 구성과 컨테이너 기동 결과·캡처:
+- 개인 환경에서 확인한 preflight ready 상태: true / false / 미확인
 - student-worksheet.sql에서 확인한 내용이나 남은 질문:
-- 강사가 확인한 preflight ready 상태: true / false / 미확인
 - SQL [A]에 Catalog·raw 포맷·checkpoint·null 제외 조건의 역할을 정리했습니다: 예 / 작성 중
 - Flink RUNNING이나 checkpoint 성공만으로 수집 완료라고 할 수 없는 이유:
 
-학생은 맥미니 접속이나 로컬 Docker 실행을 하지 않습니다.
+수업 중에는 강사 화면을 함께 봤고, 이 복습 과제는 학생 개인 환경에서 구성·실행합니다. 강사 맥미니 접속은 필요하지 않습니다. 기동 중 막힌 경우 오류 화면과 진행 지점, 질문을 남깁니다.
 
 ## 4. 공통 예제 사전 예측과 수집 결과 대조
 
-강사 CASE_ID:
+개인 실행 CASE_ID:
 실제 환불 ID — CASE_ID-r1:
-공통 토픽 / 파티션: cdc.public.refunds / 화면에서 확인
-관찰 방식: 실제 시연 / 과거 리허설 기록 / 미관찰 (선택)
+공통 토픽 / 파티션: cdc.public.refunds / 개인 실행에서 확인 또는 미확인
+비교한 자료: 개인 실행 / 강사 시연 / 과거 리허설 기록 / 미관찰 (해당 항목 표시)
 
-수업 후 자신의 예측과 실제 before/after·offset·copies를 아래 표에서 비교합니다. 확인하지 못한 값은 미확인으로 남기고 추정하지 않습니다. 전체 JSON을 옮길 필요는 없습니다.
+개인 실행의 예측과 실제 before/after·offset·copies를 아래 표에서 비교합니다. 강사 시연이나 과거 리허설 자료를 참고한 값은 개인 실행 결과와 구분합니다. 확인하지 못한 값은 미확인으로 남기고 추정하지 않습니다. 전체 JSON을 옮길 필요는 없습니다.
 
 | 변경(op) | 기대 원천 행 / before→after amount | 실제 before→after | Kafka offset | bronze_copies |
 |---|---|---|---|---|
@@ -69,6 +70,8 @@ Kafka에 있으나 Bronze에 없을 때 먼저 확인할 구간 한 문장:
 
 ## 5. 복습 점검과 2회차 질문
 
+- [ ] 개인 환경 구성과 컨테이너 기동 결과·캡처 정리
+- [ ] 공통 환불 INSERT·UPDATE·DELETE 실행과 결과·막힌 지점 기록
 - [ ] SQL [A] 네 가지 설정의 역할 정리
 - [ ] SQL [B] UPDATE·DELETE 뒤 같은 PK를 조회하는 SELECT 작성
 - [ ] SQL [C] 공통 환불 c/u/d 이벤트 예측

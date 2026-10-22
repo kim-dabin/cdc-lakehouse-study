@@ -66,3 +66,5 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 ## 회차별 상세 자료
 
 - [1회차: CDC 레이크하우스 이해와 공통 예제 수집 확인](session01/README.md) — 최종 강의안의 120분 흐름, 공통 예측 SQL·수집 대조 제출 양식, 아키텍처 세 장과 맥미니 실행 순서.
+
+- [2회차: PostgreSQL CDC 수집과 변경 이벤트 검증](session02/README.md) — Bronze 세 이력·실제 Parquet, 수집 설정, 독립 Python 파서와 구간별 진단.

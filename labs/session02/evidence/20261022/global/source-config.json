@@ -1,0 +1,95 @@
+{
+  "settings": [
+    {
+      "name": "max_replication_slots",
+      "setting": "10"
+    },
+    {
+      "name": "max_wal_senders",
+      "setting": "10"
+    },
+    {
+      "name": "wal_level",
+      "setting": "logical"
+    }
+  ],
+  "slots": [
+    {
+      "slot_name": "cdc_lab",
+      "plugin": "pgoutput",
+      "slot_type": "logical",
+      "database": "app",
+      "active": true,
+      "restart_lsn": "0/19A6E60",
+      "confirmed_flush_lsn": "0/19A6E60"
+    }
+  ],
+  "publications": [
+    {
+      "pubname": "cdc_lab",
+      "pubinsert": true,
+      "pubupdate": true,
+      "pubdelete": true,
+      "pubtruncate": true
+    }
+  ],
+  "publication_tables": [
+    {
+      "pubname": "cdc_lab",
+      "schemaname": "public",
+      "tablename": "orders"
+    },
+    {
+      "pubname": "cdc_lab",
+      "schemaname": "public",
+      "tablename": "payments"
+    },
+    {
+      "pubname": "cdc_lab",
+      "schemaname": "public",
+      "tablename": "refunds"
+    }
+  ],
+  "replica_identity": [
+    {
+      "schemaname": "public",
+      "tablename": "orders",
+      "replica_identity_code": "f"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "payments",
+      "replica_identity_code": "f"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "refunds",
+      "replica_identity_code": "f"
+    }
+  ],
+  "primary_keys": [
+    {
+      "table_name": "orders",
+      "column_name": "order_id",
+      "ordinal_position": 1
+    },
+    {
+      "table_name": "payments",
+      "column_name": "payment_id",
+      "ordinal_position": 1
+    },
+    {
+      "table_name": "refunds",
+      "column_name": "refund_id",
+      "ordinal_position": 1
+    }
+  ],
+  "replica_identity_legend": {
+    "d": "DEFAULT",
+    "f": "FULL",
+    "i": "INDEX",
+    "n": "NOTHING"
+  },
+  "scope": "Read-only PostgreSQL capture conditions; active slot alone does not prove delivery",
+  "observed_at": "2026-10-22T00:07:45.329404+00:00"
+}

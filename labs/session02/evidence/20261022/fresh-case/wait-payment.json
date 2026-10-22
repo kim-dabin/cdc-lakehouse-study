@@ -1,0 +1,8 @@
+{
+  "namespace": "s01-s02-verify-10220010",
+  "event": "payment",
+  "bronze_visible": true,
+  "wait_observed_seconds": 7.61,
+  "wait_started_at": "2026-10-22T00:08:25.905292+00:00",
+  "bronze_observed_at": "2026-10-22T00:08:33.302064+00:00"
+}

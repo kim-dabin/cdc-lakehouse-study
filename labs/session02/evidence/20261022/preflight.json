@@ -1,0 +1,20 @@
+{
+  "ready": true,
+  "vm_free_gib": 21.29,
+  "job_id": "f836c0bc63ed6086df33e17d1fa7b0e6",
+  "row_counts": {
+    "lake.bronze.cdc_events": 68,
+    "lake.silver.payments": 12,
+    "lake.gold.fct_order_settlement": 12
+  },
+  "checkpoint_counts": {
+    "restored": 1,
+    "total": 36509,
+    "in_progress": 0,
+    "completed": 36509,
+    "failed": 0
+  },
+  "baseline_checkpoint_failures": 0,
+  "checkpoint_failures_during_check": 0,
+  "latest_completed_checkpoint_id": 107805
+}

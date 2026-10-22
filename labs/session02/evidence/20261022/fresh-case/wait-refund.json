@@ -1,0 +1,8 @@
+{
+  "namespace": "s01-s02-verify-10220010",
+  "event": "refund",
+  "bronze_visible": true,
+  "wait_observed_seconds": 9.54,
+  "wait_started_at": "2026-10-22T00:08:33.780782+00:00",
+  "bronze_observed_at": "2026-10-22T00:08:42.332015+00:00"
+}

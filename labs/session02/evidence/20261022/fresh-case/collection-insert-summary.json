@@ -1,0 +1,31 @@
+{
+  "stage": "insert",
+  "passed": true,
+  "source_rows": 1,
+  "refund_id": "s01-s02-verify-10220010-r1",
+  "op": "c",
+  "before_amount": null,
+  "after_amount": 20000,
+  "identity": [
+    "cdc.public.refunds",
+    0,
+    46
+  ],
+  "source_lsn": 26902616,
+  "bronze_copies": 1,
+  "history_ops": [
+    "c"
+  ],
+  "kafka_tombstones": 0,
+  "kafka_ts": "2026-10-22 00:08:34.375000",
+  "ingested_at": "2026-10-22 00:08:34.397000",
+  "wait_observation": {
+    "namespace": "s01-s02-verify-10220010",
+    "event": "refund",
+    "bronze_visible": true,
+    "wait_observed_seconds": 9.54,
+    "wait_started_at": "2026-10-22T00:08:33.780782+00:00",
+    "bronze_observed_at": "2026-10-22T00:08:42.332015+00:00"
+  },
+  "scope": "This synthetic key only; not an end-to-end exactly-once or recovery guarantee"
+}

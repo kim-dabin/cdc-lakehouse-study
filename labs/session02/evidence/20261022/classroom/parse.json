@@ -1,0 +1,112 @@
+{
+  "namespace": "s01-live-10181152",
+  "refund_id": "s01-live-10181152-r1",
+  "origin": "live_kafka",
+  "scope": "Bounded retained-log read, no group ID and no offset commit; not a connector reset",
+  "parsed_events": [
+    {
+      "kind": "change",
+      "metadata": {
+        "topic": "cdc.public.refunds",
+        "partition_id": 0,
+        "kafka_offset": 42,
+        "kafka_ts_ms": 1792292137649
+      },
+      "op": "c",
+      "pk": {
+        "refund_id": "s01-live-10181152-r1"
+      },
+      "pk_source": "after",
+      "before": null,
+      "after": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "row": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "source_lsn": 26892184
+    },
+    {
+      "kind": "change",
+      "metadata": {
+        "topic": "cdc.public.refunds",
+        "partition_id": 0,
+        "kafka_offset": 43,
+        "kafka_ts_ms": 1792292427889
+      },
+      "op": "u",
+      "pk": {
+        "refund_id": "s01-live-10181152-r1"
+      },
+      "pk_source": "after",
+      "before": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 20000,
+        "status": "success"
+      },
+      "after": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "row": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26895368
+    },
+    {
+      "kind": "change",
+      "metadata": {
+        "topic": "cdc.public.refunds",
+        "partition_id": 0,
+        "kafka_offset": 44,
+        "kafka_ts_ms": 1792292550210
+      },
+      "op": "d",
+      "pk": {
+        "refund_id": "s01-live-10181152-r1"
+      },
+      "pk_source": "before",
+      "before": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "after": null,
+      "row": {
+        "refund_id": "s01-live-10181152-r1",
+        "payment_id": "s01-live-10181152-p1",
+        "amount": 30000,
+        "status": "success"
+      },
+      "source_lsn": 26897840
+    },
+    {
+      "kind": "tombstone",
+      "metadata": {
+        "topic": "cdc.public.refunds",
+        "partition_id": 0,
+        "kafka_offset": 45,
+        "kafka_ts_ms": 1792292550210
+      },
+      "op": null,
+      "pk": {
+        "refund_id": "s01-live-10181152-r1"
+      },
+      "value_kind": "wire_null"
+    }
+  ],
+  "observed_at": "2026-10-22T00:07:45.484817+00:00"
+}

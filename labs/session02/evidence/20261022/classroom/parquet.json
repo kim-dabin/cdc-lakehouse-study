@@ -1,0 +1,138 @@
+{
+  "namespace": "s01-live-10181152",
+  "refund_id": "s01-live-10181152-r1",
+  "bronze_records": [
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 42,
+      "payload": "{\"before\":null,\"after\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":20000,\"status\":\"success\"},\"source\":{\"version\":\"3.2.4.Final\",\"connector\":\"postgresql\",\"name\":\"cdc\",\"ts_ms\":1792292137450,\"snapshot\":\"false\",\"db\":\"app\",\"sequence\":\"[\\\"26892128\\\",\\\"26892184\\\"]\",\"ts_us\":1792292137450834,\"ts_ns\":1792292137450834000,\"schema\":\"public\",\"table\":\"refunds\",\"txId\":806,\"lsn\":26892184,\"xmin\":null},\"transaction\":null,\"op\":\"c\",\"ts_ms\":1792292137475,\"ts_us\":1792292137475195,\"ts_ns\":1792292137475195476}",
+      "kafka_ts": "2026-10-18 02:55:37.649000",
+      "ingested_at": "2026-10-18 02:55:37.658000",
+      "parquet_file": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02334.parquet",
+      "op": "c",
+      "before_amount": null,
+      "after_amount": 20000,
+      "refund_id": "s01-live-10181152-r1",
+      "source_lsn": 26892184
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 43,
+      "payload": "{\"before\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":20000,\"status\":\"success\"},\"after\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":30000,\"status\":\"success\"},\"source\":{\"version\":\"3.2.4.Final\",\"connector\":\"postgresql\",\"name\":\"cdc\",\"ts_ms\":1792292427489,\"snapshot\":\"false\",\"db\":\"app\",\"sequence\":\"[\\\"26895048\\\",\\\"26895368\\\"]\",\"ts_us\":1792292427489259,\"ts_ns\":1792292427489259000,\"schema\":\"public\",\"table\":\"refunds\",\"txId\":807,\"lsn\":26895368,\"xmin\":null},\"transaction\":null,\"op\":\"u\",\"ts_ms\":1792292427522,\"ts_us\":1792292427522925,\"ts_ns\":1792292427522925879}",
+      "kafka_ts": "2026-10-18 03:00:27.889000",
+      "ingested_at": "2026-10-18 03:00:27.897000",
+      "parquet_file": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02364.parquet",
+      "op": "u",
+      "before_amount": 20000,
+      "after_amount": 30000,
+      "refund_id": "s01-live-10181152-r1",
+      "source_lsn": 26895368
+    },
+    {
+      "topic": "cdc.public.refunds",
+      "partition_id": 0,
+      "kafka_offset": 44,
+      "payload": "{\"before\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":30000,\"status\":\"success\"},\"after\":null,\"source\":{\"version\":\"3.2.4.Final\",\"connector\":\"postgresql\",\"name\":\"cdc\",\"ts_ms\":1792292549611,\"snapshot\":\"false\",\"db\":\"app\",\"sequence\":\"[\\\"26897784\\\",\\\"26897840\\\"]\",\"ts_us\":1792292549611722,\"ts_ns\":1792292549611722000,\"schema\":\"public\",\"table\":\"refunds\",\"txId\":808,\"lsn\":26897840,\"xmin\":null},\"transaction\":null,\"op\":\"d\",\"ts_ms\":1792292549998,\"ts_us\":1792292549998906,\"ts_ns\":1792292549998906010}",
+      "kafka_ts": "2026-10-18 03:02:30.210000",
+      "ingested_at": "2026-10-18 03:02:30.223000",
+      "parquet_file": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02376.parquet",
+      "op": "d",
+      "before_amount": 30000,
+      "after_amount": null,
+      "refund_id": "s01-live-10181152-r1",
+      "source_lsn": 26897840
+    }
+  ],
+  "history_ops": [
+    "c",
+    "u",
+    "d"
+  ],
+  "record_count": 3,
+  "scope": "Selected current append-only Bronze files were read as bytes and decoded; exact payload+Kafka identity matched SQL. This is not a general Iceberg delete-file reader or exactly-once guarantee.",
+  "files": [
+    {
+      "file_path": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02334.parquet",
+      "file_format": "PARQUET",
+      "record_count": 1,
+      "file_size_in_bytes": 4414
+    },
+    {
+      "file_path": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02364.parquet",
+      "file_format": "PARQUET",
+      "record_count": 1,
+      "file_size_in_bytes": 4828
+    },
+    {
+      "file_path": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02376.parquet",
+      "file_format": "PARQUET",
+      "record_count": 1,
+      "file_size_in_bytes": 4417
+    }
+  ],
+  "metadata_location": "s3://warehouse/bronze/cdc_events/metadata/10810-9b2b30ff-3286-4d1a-ba39-cf559f5236c4.metadata.json",
+  "read_method": "S3FileIO physical bytes + Iceberg GenericParquetReaders; no table scan substitution",
+  "physical_files": [
+    {
+      "file_path": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02334.parquet",
+      "byte_count": 4414,
+      "sha256": "1c14d78719b1e4d440052a0e4554092e323aaf6903256d7f6e5d49779639e63a",
+      "magic_start": "PAR1",
+      "magic_end": "PAR1",
+      "decoded_record_count": 1,
+      "matching_records": [
+        {
+          "topic": "cdc.public.refunds",
+          "partition_id": 0,
+          "kafka_offset": 42,
+          "payload": "{\"before\":null,\"after\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":20000,\"status\":\"success\"},\"source\":{\"version\":\"3.2.4.Final\",\"connector\":\"postgresql\",\"name\":\"cdc\",\"ts_ms\":1792292137450,\"snapshot\":\"false\",\"db\":\"app\",\"sequence\":\"[\\\"26892128\\\",\\\"26892184\\\"]\",\"ts_us\":1792292137450834,\"ts_ns\":1792292137450834000,\"schema\":\"public\",\"table\":\"refunds\",\"txId\":806,\"lsn\":26892184,\"xmin\":null},\"transaction\":null,\"op\":\"c\",\"ts_ms\":1792292137475,\"ts_us\":1792292137475195,\"ts_ns\":1792292137475195476}",
+          "kafka_ts": "2026-10-18T02:55:37.649Z",
+          "ingested_at": "2026-10-18T02:55:37.658Z"
+        }
+      ]
+    },
+    {
+      "file_path": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02364.parquet",
+      "byte_count": 4828,
+      "sha256": "5734c3b088189bb285b3b67d43e86b5f62e24168193c7b027edb1751814998d7",
+      "magic_start": "PAR1",
+      "magic_end": "PAR1",
+      "decoded_record_count": 1,
+      "matching_records": [
+        {
+          "topic": "cdc.public.refunds",
+          "partition_id": 0,
+          "kafka_offset": 43,
+          "payload": "{\"before\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":20000,\"status\":\"success\"},\"after\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":30000,\"status\":\"success\"},\"source\":{\"version\":\"3.2.4.Final\",\"connector\":\"postgresql\",\"name\":\"cdc\",\"ts_ms\":1792292427489,\"snapshot\":\"false\",\"db\":\"app\",\"sequence\":\"[\\\"26895048\\\",\\\"26895368\\\"]\",\"ts_us\":1792292427489259,\"ts_ns\":1792292427489259000,\"schema\":\"public\",\"table\":\"refunds\",\"txId\":807,\"lsn\":26895368,\"xmin\":null},\"transaction\":null,\"op\":\"u\",\"ts_ms\":1792292427522,\"ts_us\":1792292427522925,\"ts_ns\":1792292427522925879}",
+          "kafka_ts": "2026-10-18T03:00:27.889Z",
+          "ingested_at": "2026-10-18T03:00:27.897Z"
+        }
+      ]
+    },
+    {
+      "file_path": "s3://warehouse/bronze/cdc_events/data/00000-0-df8ed9e2-ac97-493f-bd59-42371629d755-02376.parquet",
+      "byte_count": 4417,
+      "sha256": "739c2129f8a5e3fe42233a04e4bd28b294fb527bbb6d59d26a70d3fc451493b5",
+      "magic_start": "PAR1",
+      "magic_end": "PAR1",
+      "decoded_record_count": 1,
+      "matching_records": [
+        {
+          "topic": "cdc.public.refunds",
+          "partition_id": 0,
+          "kafka_offset": 44,
+          "payload": "{\"before\":{\"refund_id\":\"s01-live-10181152-r1\",\"payment_id\":\"s01-live-10181152-p1\",\"amount\":30000,\"status\":\"success\"},\"after\":null,\"source\":{\"version\":\"3.2.4.Final\",\"connector\":\"postgresql\",\"name\":\"cdc\",\"ts_ms\":1792292549611,\"snapshot\":\"false\",\"db\":\"app\",\"sequence\":\"[\\\"26897784\\\",\\\"26897840\\\"]\",\"ts_us\":1792292549611722,\"ts_ns\":1792292549611722000,\"schema\":\"public\",\"table\":\"refunds\",\"txId\":808,\"lsn\":26897840,\"xmin\":null},\"transaction\":null,\"op\":\"d\",\"ts_ms\":1792292549998,\"ts_us\":1792292549998906,\"ts_ns\":1792292549998906010}",
+          "kafka_ts": "2026-10-18T03:02:30.210Z",
+          "ingested_at": "2026-10-18T03:02:30.223Z"
+        }
+      ]
+    }
+  ],
+  "passed": true,
+  "sql_file_records_match": true,
+  "matching_record_count": 3,
+  "three_event_history_complete": true,
+  "observed_at": "2026-10-22T00:07:48.617353+00:00"
+}

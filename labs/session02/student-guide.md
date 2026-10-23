@@ -67,7 +67,7 @@ SQL [A]는 `after.refund_id`만 조건으로 사용합니다. 슬라이드 5를 
 ./labs/session02/lab.sh "$CASE_ID" parquet --evidence
 ```
 
-`files`에서는 파일 경로·포맷·행 수·크기를 봅니다. `parquet`는 실제 저장소의 파일 bytes를 읽고 Parquet 형식과 디코딩된 행을 확인해 해당 환불 이력과 대조합니다. 경로만 출력한 것과 파일 내용을 읽은 것을 구분합니다.
+`files`에서는 파일 경로·포맷·행 수·크기를 봅니다. files 메타데이터의 `record_count`는 다른 키도 포함한 파일 전체 행 수입니다. `parquet`는 실제 저장소의 파일 bytes를 읽고 Parquet 형식과 디코딩된 행을 확인해 해당 환불 이력과 대조합니다. 선택한 파일들에서 찾은 이번 환불의 이력 수는 `parquet` 최상위 결과의 `matching_record_count`로 확인합니다. 경로만 출력한 것과 파일 내용을 읽은 것을 구분합니다.
 
 파일 안에서 payload와 topic·partition_id·kafka_offset을 찾아 Bronze 조회 결과와 연결해 보세요. c/u/d 세 이벤트가 반드시 파일 하나에 들어가는 것은 아닙니다. DML 한 번과 파일 한 개, DML 한 번과 snapshot 한 개도 항상 일치하지 않습니다.
 
@@ -133,7 +133,7 @@ python3 labs/session02/event_parser.py --fixtures
 
 `event_parser.py`의 `parse_event(raw_key, raw_value, metadata)`는 메시지 한 건을 입력받아 결과를 돌려주는 작은 함수입니다. `kind`로 change·tombstone·invalid를 구분합니다. change에는 `op`, `pk`, `pk_source`, `before`, `after`, 선택한 `row`, `source_lsn`이 들어 있습니다. 원문을 삭제하거나 Bronze를 갱신하는 함수가 아닙니다.
 
-수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 19의 `raw_value`는 wire 입력이며 `value`는 JSON 해석 결과입니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
+수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 19는 key 검증 이후의 핵심 분기 발췌입니다. 실제 함수는 key를 먼저 검증해 잘못된 key는 value가 없어도 invalid로 처리하며, 정상 key의 wire-null을 tombstone으로 구분합니다. `raw_value`는 wire 입력이며 `value`는 JSON 해석 결과입니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
 
 | 입력 | 해석할 때 볼 것 |
 |---|---|
@@ -144,7 +144,7 @@ python3 labs/session02/event_parser.py --fixtures
 | tombstone | value 자체가 null인 메시지 |
 | 손상된 JSON·잘못된 key·모르는 op | invalid와 error_code |
 
-Kafka wire value가 없는 `None`과 문자열 `"null"`을 JSON으로 해석한 결과도 다릅니다. 전자는 tombstone으로, 후자는 `invalid_json_null`로 구분합니다. 파서가 오류를 조용히 정상 행으로 바꾸지 않는 이유를 생각해보세요.
+Kafka wire value가 없는 `None`과 문자열 `"null"`을 JSON으로 해석한 결과도 다릅니다. 정상 key라면 전자는 tombstone으로, 후자는 `invalid_json_null`로 구분합니다. 파서가 오류를 조용히 정상 행으로 바꾸지 않는 이유를 생각해보세요.
 
 SQL [D]는 같은 원리를 Spark SQL로 표현합니다. `COALESCE(after_id, before_id)`로 환불 ID를 찾고, DELETE이면 before.amount를 읽습니다. 여기서 만든 값은 이벤트 한 건의 해석이며, 환불별 최신 상태 테이블을 갱신한 결과가 아닙니다.
 

@@ -90,7 +90,7 @@ SQL [A]의 `lake.bronze.cdc_events.files`는 Iceberg 현재 테이블이 참조�
 
 publication과 slot은 이름이 같아도 역할이 다릅니다. publication은 무엇을 발행할지, slot은 소비자의 진행 위치·WAL 보존과 관련된 상태를 다룹니다. `active=true`는 해당 slot을 사용하는 연결 상태를 보여주며 Iceberg 반영 완료를 뜻하지 않습니다.
 
-실제 출력에서는 slot 상태의 `active`, `restart_lsn`, `confirmed_flush_lsn`을 봅니다. 슬라이드 14의 `wal_status`는 공식 뷰의 추가 참고 컬럼이며 오늘 helper 출력에는 없습니다.
+실제 출력에서는 slot 상태의 `active`, `restart_lsn`, `confirmed_flush_lsn`을 봅니다. 슬라이드 16의 `wal_status`는 공식 뷰의 추가 참고 컬럼이며 오늘 helper 출력에는 없습니다.
 
 예제는 `REPLICA IDENTITY FULL`을 사용하므로 이전 amount를 관찰합니다. 모든 PostgreSQL 기본 설정에서 before의 일반 컬럼이 같은 모습으로 들어오는 것은 아닙니다. SQL 출력의 replica identity 코드가 `f`라면 FULL을 뜻합니다.
 
@@ -133,7 +133,7 @@ python3 labs/session02/event_parser.py --fixtures
 
 `event_parser.py`의 `parse_event(raw_key, raw_value, metadata)`는 메시지 한 건을 입력받아 결과를 돌려주는 작은 함수입니다. `kind`로 change·tombstone·invalid를 구분합니다. change에는 `op`, `pk`, `pk_source`, `before`, `after`, 선택한 `row`, `source_lsn`이 들어 있습니다. 원문을 삭제하거나 Bronze를 갱신하는 함수가 아닙니다.
 
-수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 19는 key 검증 이후의 핵심 분기 발췌입니다. 실제 함수는 key를 먼저 검증해 잘못된 key는 value가 없어도 invalid로 처리하며, 정상 key의 wire-null을 tombstone으로 구분합니다. `raw_value`는 wire 입력이며 `value`는 JSON 해석 결과입니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
+수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 22는 key 검증 이후의 핵심 분기 발췌입니다. 실제 함수는 key를 먼저 검증해 잘못된 key는 value가 없어도 invalid로 처리하며, 정상 key의 wire-null을 tombstone으로 구분합니다. `raw_value`는 wire 입력이며 `value`는 JSON 해석 결과입니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
 
 | 입력 | 해석할 때 볼 것 |
 |---|---|
@@ -150,7 +150,7 @@ SQL [D]는 같은 원리를 Spark SQL로 표현합니다. `COALESCE(after_id, be
 
 fixture 출력의 `origin=synthetic_fixture`를 확인합니다. 각 fixture는 독립 입력이며 실제 수업의 금액 변경 순서를 재생한 기록이 아닙니다. 고정 예제가 통과한 것과 실제 파이프라인에서 이벤트가 수집된 것은 따로 확인해야 합니다.
 
-슬라이드 20의 실제 `parse` 조회는 다음 구간에서 새 CASE_ID를 만든 뒤 진행합니다.
+슬라이드 23의 실제 `parse` 조회는 다음 구간에서 새 CASE_ID를 만든 뒤 진행합니다.
 
 ## 5. 새 키로 예측한 뒤 실제 이벤트 대조 — 01:15–01:35
 

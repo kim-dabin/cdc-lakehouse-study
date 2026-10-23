@@ -1,8 +1,0 @@
-{
-  "namespace": "s01-review-20261017a",
-  "event": "delete",
-  "bronze_visible": true,
-  "wait_observed_seconds": 9.28,
-  "wait_started_at": "2026-10-16T15:37:25.073618+00:00",
-  "bronze_observed_at": "2026-10-16T15:37:34.355878+00:00"
-}

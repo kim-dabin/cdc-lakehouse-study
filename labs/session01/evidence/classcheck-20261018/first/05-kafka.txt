@@ -1,4 +1,0 @@
-{
-  "refund_id": "s01-classcheck-20261018a-r1",
-  "kafka_records": []
-}

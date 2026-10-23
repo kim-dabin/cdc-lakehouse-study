@@ -32,10 +32,10 @@ Flink와 Spark가 같은 JDBC Catalog와 MinIO를 사용한다. Catalog는 테�
 
 강사가 SSH로 맥미니에 접속해 화면을 공유한다. 1회차 학생은 자기 노트북에서 공통 예제 SQL·이벤트 예측과 수집 대조 기록을 작성한다. 기존 그림의 학생 코드·설계 작성 표기는 전체 스터디의 역할이며, 개인 도메인·테이블 설계 확정은 3회차에 진행한다. Airflow는 이후 회차의 주기 실행에 사용하며, 1회차에서는 Bronze까지 수집을 대조한다. UI는 SSH 로컬 터널과 맥미니 loopback의 Lima 포트 전달 경로로 조회한다. minio-init처럼 초기화만 하는 일회성 컨테이너는 주요 배치도에서 생략했다.
 
-## 작성 기준과 검증
+## 그림과 편집 원본
 
 `compose.yaml`, `flink/ingest.sql.template`, `spark/start-thrift.sh`, `scripts/pipeline.py`, `scripts/runner_api.py`, `airflow/dags/lakehouse_refresh.py`를 읽고 구성에 맞춰 작성했다. 그림은 설정과 수업 진행 방식에 따른 구조를 표현한다.
 
-[검증 기록](verification.md). drawio 스킬의 YAML 기반 작성·검증·Desktop PNG 내보내기 절차를 사용했다. 편집 원본에는 실제 source/target에 연결된 도형과 연결선이 들어 있으며, 전체 페이지를 한 장의 이미지로 붙인 파일이 아니다.
+편집 원본에는 개별 도형과 연결선이 들어 있어 draw.io에서 내용을 수정할 수 있습니다.
 
 재생성에 사용하는 YAML 명세도 [specs](specs/)에 보관합니다.

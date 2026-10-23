@@ -25,7 +25,7 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 2. 공통 refunds의 20000 입력 → 30000 정정 → 삭제를 예측하고 원천 확인 SELECT를 작성한다.
 3. 강사 시연에서 같은 PK의 op·before/after와 Kafka·Bronze 수집 위치·copies를 대조한다.
 4. DELETE 이후 원천 0행과 Bronze c/u/d 이력, tombstone 제외, 지연 관찰 값의 의미를 확인한다.
-5. SQL 파일과 submission.md를 제출한다. 개인 DDL·DML은 이번 과제가 아니다.
+5. 수업 후 개인 환경에서 공통 예제를 실행하고 SQL 파일과 submission.md로 복습 결과를 정리한다. 개인 DDL·DML은 이번 과제가 아니다.
 
 ### 2–3회차 — 수집 설정과 개인 설계
 
@@ -65,6 +65,6 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 
 ## 회차별 상세 자료
 
-- [1회차: CDC 레이크하우스 이해와 공통 예제 수집 확인](session01/README.md) — 최종 강의안의 120분 흐름, 공통 예측 SQL·수집 대조 제출 양식, 아키텍처 세 장과 맥미니 실행 순서.
+- [1회차: CDC 레이크하우스 이해와 공통 예제 수집 확인](session01/README.md) — 120분 흐름, 공통 예측 SQL·수집 대조 복습 양식, 아키텍처 세 장과 개인 환경 실행 안내.
 
 - [2회차: PostgreSQL CDC 수집과 변경 이벤트 검증](session02/README.md) — Bronze 세 이력·실제 Parquet, 수집 설정, 독립 Python 파서와 구간별 진단.

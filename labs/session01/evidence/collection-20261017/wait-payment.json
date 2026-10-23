@@ -1,8 +1,0 @@
-{
-  "namespace": "s01-review-20261017a",
-  "event": "payment",
-  "bronze_visible": true,
-  "wait_observed_seconds": 7.01,
-  "wait_started_at": "2026-10-16T15:36:57.225498+00:00",
-  "bronze_observed_at": "2026-10-16T15:37:04.024691+00:00"
-}

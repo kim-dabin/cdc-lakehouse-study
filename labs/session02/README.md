@@ -6,8 +6,7 @@
 
 ## 수업 자료
 
-- [강의안 PPTX — 28장·발표자 노트](slides/02-session02.pptx) · [강의안 PDF](slides/02-session02.pdf)
-- [강사용 진행안](instructor-guide.md) · [복사해서 실행하는 큐시트](cuesheet.md) · [큐시트 PDF](02-instructor-cuesheet.pdf)
+- [학생용 강의안 PPTX — 발표자 노트 없음](slides/02-session02.pptx) · [학생 교재 PDF](slides/02-session02.pdf)
 
 - [학생 실습 가이드와 120분 흐름](student-guide.md)
 - [SQL 학습지 — Spark SQL / PostgreSQL 구분](sql/student-worksheet.sql)

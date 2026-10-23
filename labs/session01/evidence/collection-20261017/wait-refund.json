@@ -1,8 +1,0 @@
-{
-  "namespace": "s01-review-20261017a",
-  "event": "refund",
-  "bronze_visible": true,
-  "wait_observed_seconds": 11.3,
-  "wait_started_at": "2026-10-16T15:37:04.216627+00:00",
-  "bronze_observed_at": "2026-10-16T15:37:15.305727+00:00"
-}

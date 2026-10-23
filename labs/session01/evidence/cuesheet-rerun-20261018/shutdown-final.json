@@ -1,8 +1,0 @@
-{
-  "savepoint": "file:/opt/flink/state/savepoints/savepoint-9018b8-0cfdd8c5a209",
-  "job_id": "9018b8fcacb3897008efadadd526115f",
-  "cdc_project_stopped": true,
-  "savepoint_metadata_exists": true,
-  "savepoint_metadata_bytes": 2704,
-  "unrelated_de7_running": true
-}

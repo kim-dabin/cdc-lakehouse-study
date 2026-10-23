@@ -1,5 +1,5 @@
--- Instructor: psql -v namespace=s01-instructor-20261014a
--- Use a fresh namespace for each rehearsal. No shared-row resets.
+-- Example: psql -v namespace=s01-example-run
+-- Use a fresh namespace for each run. No shared-row resets.
 BEGIN;
 INSERT INTO orders (order_id, ordered_at, status)
 VALUES (:'namespace' || '-o1', '2026-10-19T10:00:00+09:00', 'confirmed');

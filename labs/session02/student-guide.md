@@ -133,7 +133,7 @@ python3 labs/session02/event_parser.py --fixtures
 
 `event_parser.py`의 `parse_event(raw_key, raw_value, metadata)`는 메시지 한 건을 입력받아 결과를 돌려주는 작은 함수입니다. `kind`로 change·tombstone·invalid를 구분합니다. change에는 `op`, `pk`, `pk_source`, `before`, `after`, 선택한 `row`, `source_lsn`이 들어 있습니다. 원문을 삭제하거나 Bronze를 갱신하는 함수가 아닙니다.
 
-수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 19의 축약 코드에서 `value`는 JSON 해석 전 `raw_value`를 뜻합니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
+수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 19의 `raw_value`는 wire 입력이며 `value`는 JSON 해석 결과입니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
 
 | 입력 | 해석할 때 볼 것 |
 |---|---|

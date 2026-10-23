@@ -1,4 +1,4 @@
--- Instructor answer: aggregate before joining to avoid multiplying amounts.
+-- Common-example source-state check: aggregate before joining to avoid multiplying amounts.
 WITH paid AS (
   SELECT order_id, sum(amount) AS amount FROM payments
   WHERE status = 'success' GROUP BY order_id

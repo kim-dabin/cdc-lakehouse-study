@@ -1,4 +1,4 @@
-"""Instructor-only readiness gate. This checks data queries, not just container state."""
+"""Environment readiness gate. This checks data queries, not just container state."""
 import json
 import os
 import time

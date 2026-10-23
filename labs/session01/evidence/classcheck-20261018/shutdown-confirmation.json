@@ -1,6 +1,0 @@
-{
-  "savepoint_metadata_exists": true,
-  "savepoint_metadata_bytes": 2704,
-  "savepoint": "file:/opt/flink/state/savepoints/savepoint-de76cf-0a5abbd610bb",
-  "cdc_project_stopped": true
-}

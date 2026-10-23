@@ -1,4 +1,4 @@
--- Synthetic instructor example; students design their own source model.
+-- Synthetic common example for the collection exercises.
 CREATE TABLE orders (
  order_id text PRIMARY KEY,
  ordered_at timestamptz NOT NULL,

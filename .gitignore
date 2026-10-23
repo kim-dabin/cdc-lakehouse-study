@@ -9,3 +9,20 @@ __pycache__/
 
 dbt/.user.yml
 .drawio-tmp/
+
+# Instructor material lives outside the student repository.
+docs/evidence/
+docs/verification.md
+docs/diagrams/verification.md
+reviews/
+labs/*/evidence/
+labs/*/instructor-guide.md
+labs/*/cuesheet*.md
+labs/*/*instructor*.pdf
+labs/*/slides/deck-content*.json
+labs/session01/slides/
+labs/session01/runbook.md
+labs/session01/*rehearsal*.md
+labs/session01/classcheck*.md
+labs/session01/review-response.md
+labs/session01/sql/expected-source-query.sql

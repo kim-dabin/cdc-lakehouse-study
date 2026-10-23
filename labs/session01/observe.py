@@ -1,4 +1,4 @@
-"""Session 01 instructor observations. Read-only except an optional evidence file."""
+"""Session 01 observations. Read-only except an optional evidence file."""
 import argparse
 import json
 import re

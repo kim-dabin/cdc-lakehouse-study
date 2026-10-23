@@ -1,4 +1,4 @@
-"""Instructor-only, read-only source/Kafka/Bronze comparisons for one refund key."""
+"""Read-only source/Kafka/Bronze comparisons for one common-example refund key."""
 import argparse
 import json
 import os

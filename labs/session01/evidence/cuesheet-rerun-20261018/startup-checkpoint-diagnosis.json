@@ -1,6 +1,0 @@
-{
-  "log": "jobmanager-1  | 2026-10-17 18:41:58,803 INFO  org.apache.flink.runtime.checkpoint.CheckpointFailureManager [] - Failed to trigger checkpoint for job 9018b8fcacb3897008efadadd526115f since Checkpoint triggering task Source: kafka_events[1] -> Calc[2] -> IcebergStreamWriter (1/1) of job 9018b8fcacb3897008efadadd526115f is not being executed at the moment. Aborting checkpoint. Failure reason: Not all required tasks are currently running..",
-  "reason": "Checkpoint trigger during task initialization; later checkpoints completed; cumulative failed retained",
-  "baseline_failed": 1,
-  "new_failures_during_resumed_demo": 0
-}

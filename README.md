@@ -1,8 +1,8 @@
 # CDC부터 분석 마트까지
 
-부트스트랩 정규 과정을 바탕으로 진행하는 8회 실무 프로젝트 스터디의 강사 참고 구현과 실습 가이드입니다. PostgreSQL의 변경을 Iceberg에 실시간으로 쌓고, Spark SQL과 dbt로 분석 마트를 만듭니다. 실행 환경은 **Mac mini**, 코드 공유는 **GitHub**입니다.
+부트스트랩 정규 과정을 바탕으로 진행하는 8회 실무 프로젝트 스터디의 공통 예제와 학생용 실습 자료입니다. PostgreSQL의 변경을 Iceberg에 실시간으로 쌓고, Spark SQL과 dbt로 분석 마트를 만듭니다. 수업에서는 강사의 **Mac mini 화면**을 함께 보고, 복습에서는 각자의 **Docker 환경**에서 공통 예제를 실행합니다.
 
-[1회차 수업 자료](labs/session01/README.md) · [2회차 수업 자료](labs/session02/README.md) · [전체 아키텍처](docs/architecture.md) · [8회 실습](labs/README.md) · [개인 프로젝트 설계서](docs/project-template.md) · [운영 방법](docs/operations.md) · [검증 결과](docs/verification.md)
+[1회차 수업 자료](labs/session01/README.md) · [2회차 수업 자료](labs/session02/README.md) · [전체 아키텍처](docs/architecture.md) · [8회 실습](labs/README.md) · [개인 프로젝트 설계서](docs/project-template.md) · [개인 환경 운영 안내](docs/operations.md)
 
 ![데이터 흐름](docs/diagrams/01-data-flow.png)
 
@@ -17,11 +17,11 @@ PostgreSQL → Debezium → Kafka → Flink → Iceberg Bronze
                                   ↑ Airflow가 주기 실행
 ```
 
-주문·결제·환불은 동작을 이해하기 위한 강사 예시입니다. 1–2회차에는 공통 예제로 수집 흐름을 익히고, 3회차에 개인 도메인·원천 테이블 설계를 확정한 뒤 지표와 허용 지연을 구체화합니다. 1회차 학생은 서버 실행 없이 student-worksheet.sql 하나로 코드 읽기·SELECT 작성·이벤트 예측을 진행하고 실제 수집 결과와 대조합니다. 수업 중 submission.md 작성이나 파일 제출은 진행하지 않으며 관찰 메모는 선택입니다. 발표는 8회 스터디 이후 별도 일정에 진행합니다.
+주문·결제·환불은 동작을 이해하기 위한 공통 예제입니다. 1–2회차에는 공통 예제로 수집 흐름을 익히고, 3회차에 개인 도메인·원천 테이블 설계를 확정한 뒤 지표와 허용 지연을 구체화합니다. 수업 중에는 학생이 서버를 기동하지 않고 student-worksheet.sql로 코드 읽기·SELECT 작성·이벤트 예측을 진행하며 실제 수집 결과와 대조합니다. 수업 중 submission.md 작성이나 파일 제출은 진행하지 않으며 관찰 메모는 선택입니다. 수업 후에는 개인 환경을 구성해 공통 예제를 실행하고 복습 결과를 정리합니다. 발표는 8회 스터디 이후 별도 일정에 진행합니다.
 
-## 빠른 실행 — 맥미니에서
+## 빠른 실행 — 개인 Docker 환경에서
 
-Linux ARM 컨테이너를 실행할 Docker 환경이 필요합니다. 이 수업의 맥미니는 전용 Lima VM `cdc-lab`을 사용합니다. 기존 Docker 환경이라면 `.runtime/host.env` 없이 그대로 실행합니다.
+Linux ARM 컨테이너를 실행할 Docker 환경이 필요합니다. 저장소를 clone한 뒤 루트 디렉터리에서 실행합니다. 강사 서버에 접속하거나 강사 전용 환경 설정을 복사할 필요는 없습니다.
 
 ```bash
 cp .env.example .env
@@ -30,7 +30,9 @@ cp .env.example .env
   'SELECT * FROM lake.gold.mart_daily_settlement'
 ```
 
-이미지 준비 후 수업 당일에는 `./scripts/bootstrap.sh --no-build`로 기동해 빌드와 이미지 다운로드를 생략합니다.
+최초 실행은 기본 build를 사용하는 `bootstrap.sh`로 진행합니다. 이미지가 이미 준비된 환경을 다시 시작할 때는 `./scripts/bootstrap.sh --no-build`로 빌드와 이미지 다운로드를 생략할 수 있습니다.
+
+bootstrap은 전체 예제 환경을 준비하며 Silver·Gold/dbt 작업도 실행합니다. 1–2회차의 학습 범위는 원천 변경 수집과 Bronze 확인이며, Silver·Gold 모델 구현은 후속 회차에서 다룹니다.
 
 초기 기준값은 2026-10-01 주문 한 건, 결제 100,000원입니다. 마트의 `net_paid`는 **주문일 기준 결제 성공액 − 환불 성공액**이며 회계상 매출을 의미하지 않습니다.
 
@@ -50,14 +52,14 @@ cp .env.example .env
 
 | 경로 | 내용 |
 |---|---|
-| `compose.yaml`, `docker/` | 맥미니 실행 환경 |
+| `compose.yaml`, `docker/` | 공통 Docker 실행 환경 |
 | `sql/` | 예제 원천 DB |
 | `flink/` | Kafka 원문을 Iceberg에 저장하는 SQL |
 | `scripts/pipeline.py` | 변경 순서 해석과 Silver MERGE |
 | `dbt/` | 분석 모델과 데이터 테스트 |
 | `airflow/dags/` | 주기 실행 |
 | `labs/` | 회차별 실습과 제출 기준 |
-| `docs/` | 설계·운영·검증 기록 |
+| `docs/` | 아키텍처·개인 설계·환경 운영 안내 |
 
 ## 참고 문서
 

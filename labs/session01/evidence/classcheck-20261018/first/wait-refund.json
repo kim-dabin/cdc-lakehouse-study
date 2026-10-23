@@ -1,8 +1,0 @@
-{
-  "namespace": "s01-classcheck-20261018a",
-  "event": "refund",
-  "bronze_visible": true,
-  "wait_observed_seconds": 7.08,
-  "wait_started_at": "2026-10-17T17:38:37.018632+00:00",
-  "bronze_observed_at": "2026-10-17T17:38:44.093845+00:00"
-}

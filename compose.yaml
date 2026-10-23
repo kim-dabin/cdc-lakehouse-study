@@ -112,7 +112,9 @@ services:
     ports: ["127.0.0.1:28083:8083"]
   minio:
     logging: *logging
-    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    # Maintained MinIO fork; upstream quay.io/minio images are no longer public.
+    # Pin the multi-architecture index so ARM64 and AMD64 use the same release.
+    image: docker.io/pgsty/silo:RELEASE.2026-10-18T00-00-00Z@sha256:2636fc4155d9a7e41ff58cdb65ddd13ba9304e67184e13c25bc5cb34016269d7
     command: server /data --console-address :9001
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-lab_minio}
@@ -126,7 +128,7 @@ services:
       retries: 30
   minio-init:
     logging: *logging
-    image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+    image: docker.io/pgsty/mc:RELEASE.2026-10-18T00-00-00Z@sha256:6ecdaec70bc5e8cf9d0e9a70c190f3beb1c83f11617ff4333f1fcd71ab1daf18
     environment: *aws
     depends_on:
       minio: {condition: service_healthy}

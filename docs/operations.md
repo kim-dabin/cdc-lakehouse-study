@@ -23,6 +23,17 @@ cp .env.example .env
 
 **`down -v`는 모든 실습 데이터를 지운다.** 일반 종료에는 사용하지 않는다. 원천·카탈로그·Kafka·MinIO 중 일부 볼륨만 초기화하면 서로 맞지 않는 상태가 되므로 독립적인 프로젝트 이름으로 새 환경을 만드는 편이 안전하다.
 
+## MinIO 이미지 다운로드에서 `unauthorized`가 발생할 때
+
+기존 `quay.io/minio/minio`, `quay.io/minio/mc` 공개 이미지에 접근할 수 없어 신규 설치가 실패할 수 있다. 현재 `compose.yaml`은 MinIO의 커뮤니티 포크인 [SILO](https://github.com/pgsty/silo/releases/tag/RELEASE.2026-10-18T00-00-00Z)와 [mc](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-18T00-00-00Z)를 사용하며, ARM64·AMD64 멀티 아키텍처 이미지 해시까지 고정한다.
+
+```bash
+git pull --ff-only
+./scripts/bootstrap.sh --build
+```
+
+이 경우 Docker 로그인 정보 초기화, `.env` 덮어쓰기, `down -v`는 필요하지 않다. 서비스 이름과 내부 S3 주소 `http://minio:9000`, `warehouse` 버킷은 유지된다. 기존 환경의 저장소 엔진도 바뀌므로 이미 데이터가 있는 환경은 `./scripts/stop.sh`로 계획된 종료 후 백업을 보관하고 업데이트한다. 신규 설치 검증이 기존 데이터의 업그레이드·다운그레이드 검증을 대신하지는 않는다.
+
 ## UI와 SQL 접속
 
 Docker 환경을 실행한 컴퓨터의 브라우저에서 아래 주소를 연다. Compose는 호스트 포트를 `127.0.0.1`에 바인딩하므로 같은 컴퓨터에서 접속한다.

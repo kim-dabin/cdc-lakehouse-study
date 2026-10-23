@@ -32,6 +32,8 @@ cp .env.example .env
 
 최초 실행은 기본 build를 사용하는 `bootstrap.sh`로 진행합니다. 이미지가 이미 준비된 환경을 다시 시작할 때는 `./scripts/bootstrap.sh --no-build`로 빌드와 이미지 다운로드를 생략할 수 있습니다.
 
+S3 저장소는 MinIO에서 이어진 커뮤니티 포크 [SILO](https://github.com/pgsty/silo)를 사용합니다. 공개 다운로드가 중단된 `quay.io/minio/*` 대신 `pgsty/silo`와 `pgsty/mc`의 검증된 버전·이미지 해시를 고정했습니다. 실습의 서비스 이름(`minio`), 접속 주소, 계정 설정과 `warehouse` 버킷은 동일합니다. 이전 설치에서 `unauthorized`가 발생했다면 저장소를 업데이트하고 `./scripts/bootstrap.sh`를 다시 실행합니다. Docker 설정 파일 초기화나 데이터 볼륨 삭제는 필요하지 않습니다.
+
 bootstrap은 전체 예제 환경을 준비하며 Silver·Gold/dbt 작업도 실행합니다. 1–2회차의 학습 범위는 원천 변경 수집과 Bronze 확인이며, Silver·Gold 모델 구현은 후속 회차에서 다룹니다.
 
 초기 기준값은 2026-10-01 주문 한 건, 결제 100,000원입니다. 마트의 `net_paid`는 **주문일 기준 결제 성공액 − 환불 성공액**이며 회계상 매출을 의미하지 않습니다.

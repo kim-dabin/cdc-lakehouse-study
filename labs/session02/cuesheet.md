@@ -2,6 +2,8 @@
 
 120분 수업용이다. 실행은 강사 맥미니에서 하고 학생은 SQL·이벤트 결과를 예측하며 강사 화면과 비교한다. 화면 조회는 `--summary --evidence`로 짧게 보여주며 전체 원문은 증거 JSON에 보존한다. 원문 key/value·payload가 필요하면 같은 조회에서 `--summary`만 제외한다. 개인 환경에서 직접 실행하는 복습과 수업 중 활동을 구분한다. 진행표는 [강사 진행안](instructor-guide.md), 기술 근거는 [공식 참고 문서](references.md)를 함께 본다.
 
+수업 중 핵심 활동은 SQL [A] 조건 고치기, [D]의 DELETE 값 선택, c/u/d 예측, [E] 상황 하나 답하기다. [B]·[C]의 설정은 함께 읽고 전체 서술형 답 작성은 복습으로 남긴다.
+
 ## 수업 전 — 화면 공유 전에 완료
 
 **실행 위치: 강사 노트북 터미널 → SSH 접속 후 맥미니 저장소 루트.** 이미 환경이 기동되어 있다면 무조건 재기동하지 말고 상태부터 확인한다. 이미지 빌드·pull, connector 재등록 실험, 슬롯·토픽·볼륨 초기화는 수업 중 하지 않는다.
@@ -58,6 +60,8 @@ ssh -N -L 28081:127.0.0.1:28081 mini
 
 **실행 위치: 맥미니 저장소 루트, 같은 터미널.** 수업 전에 정한 CASE_ID를 유지한다.
 
+**정답을 보여주기 전:** 슬라이드 5에서 30–60초 동안 SQL [A]의 after-only 조건을 먼저 고치게 한다. 답을 받은 뒤 슬라이드 6의 정답 쿼리와 비교한다.
+
 ```bash
 printf '현재 비교할 환불 ID: %s-r1\n' "$CASE_ID"
 ./labs/session02/lab.sh "$CASE_ID" source-rows --evidence
@@ -113,6 +117,8 @@ printf '현재 비교할 환불 ID: %s-r1\n' "$CASE_ID"
 
 slot에서는 `active`, `restart_lsn`, `confirmed_flush_lsn`을 나란히 본다.
 
+**강사 참고:** 실제 `source-config` 출력의 slot 상태는 이 세 항목으로 읽는다. 슬라이드 14의 `wal_status`는 공식 뷰의 추가 참고 컬럼이며 오늘 helper 출력에는 없다.
+
 > “슬롯은 소비자가 다시 이어 읽는 데 필요한 위치와 WAL 보존에 관련된 상태를 갖고 있습니다. 지금 위치를 보는 SELECT만 하겠습니다. 이 슬롯을 다른 프로그램으로 읽거나 위치를 앞으로 보내는 실험은 하지 않습니다.”
 
 > “이 값은 초 단위 지연이 아닙니다. 또 슬롯 소비가 진행됐다는 것과 Iceberg에서 조회된다는 것도 같은 말은 아니죠. Kafka, Flink, Iceberg의 결과는 각 구간에서 따로 확인해야 합니다.”
@@ -160,7 +166,9 @@ cat labs/session02/event_parser.py
 python3 labs/session02/event_parser.py --fixtures
 ```
 
-**코드에서 짚을 순서:** `parse_event(raw_key, raw_value, metadata)` 입력 → value 전체가 null인지 분기 → JSON과 op 확인 → after 또는 before에서 PK 선택 → 수집 위치를 출력에 보존. 코드 전체를 한 줄씩 읽느라 20분을 쓰지 않는다.
+**코드에서 짚을 순서:** `parse_event(raw_key, raw_value, metadata)` 입력 → wire value 전체가 null인지 분기 → JSON과 op 확인 → after 또는 before에서 PK 선택 → 수집 위치를 출력에 보존. 핵심 분기만 함께 읽고 나머지 검증 분기는 복습으로 남긴다.
+
+**강사 참고:** 슬라이드 19의 축약 코드에서 `value`는 JSON 해석 전 `raw_value`를 뜻한다. 실제 코드에서 `json.loads` 뒤 `value`가 None이면 JSON 텍스트 `null`이므로 `invalid_json_null`로 구분한다.
 
 **강사 멘트**
 
@@ -171,6 +179,8 @@ python3 labs/session02/event_parser.py --fixtures
 > “JSON을 읽을 수 없는 입력을 만났다면 정상 이벤트처럼 값을 만들어내면 안 됩니다. 지금 함수가 어느 입력을 해석하고, 어느 입력을 따로 구분하는지 보겠습니다.”
 
 **예측 후 관찰:** `origin=synthetic_fixture`는 예시 입력이다. change의 `op`, `pk`, `pk_source`, before/after와 `source_lsn`을 본다. wire value가 null인 tombstone은 `value_kind=wire_null`, JSON 문자열 `null`은 `invalid_json_null`로 구분된다. `kind`와 오류 분류를 확인하고 예시 입력을 실제 Kafka 관측값으로 쓰지 않는다.
+
+함께 읽을 표본은 c·d·wire-null·JSON 텍스트 `null`로 좁힌다. 슬라이드 20의 실제 `parse` 명령은 지금 실행하지 않고, 다음 구간에서 새 CASE_ID를 만든 뒤 실행한다.
 
 **학생에게 질문:** 예시를 실행하기 전에 “이 입력의 PK는 어디서 가져올까요?”, “이것은 삭제 이벤트인가요, tombstone인가요?”를 묻는다. `None`은 Python 출력의 값이고 JSON에서는 `null`로 표현된다는 점도 짧게 설명한다. [Python 3.11 json](https://docs.python.org/3.11/library/json.html). 지원 이벤트와 오류 분류는 이 예제 파서의 계약이다.
 
@@ -206,6 +216,8 @@ printf '새 시연 환불 ID: %s-r1\n' "$CASE_ID"
 
 **예상 관찰:** 원천 1행·20000, op=c, before=null, after 금액 20000. 실제 이벤트 파싱 결과의 `origin=live_kafka`, `kind`, `op`, `pk`, `pk_source`, metadata를 앞의 fixture와 구분한다.
 
+INSERT에서 전체 필드를 한 번 대조한다. 이어지는 UPDATE·DELETE에서는 같은 필드 설명을 반복하지 않고 달라진 값에 집중한다.
+
 > “이번에는 예시 JSON이 아니라 방금 Kafka에서 읽은 메시지입니다. key의 환불 ID, value의 op와 금액, Bronze의 같은 수집 위치, 파서가 고른 PK가 서로 맞는지 보세요.”
 
 ### 01:22–01:27 — UPDATE 30,000원
@@ -222,6 +234,8 @@ printf '새 시연 환불 ID: %s-r1\n' "$CASE_ID"
 ```
 
 **예상 관찰:** 원천은 여전히 1행·30000, op=u, before 20000 / after 30000. Bronze에는 이번 키의 c와 u가 남는다. PK는 같지만 Kafka 수집 위치는 다르다. 순서는 같은 토픽·파티션 안에서 비교한다.
+
+바뀐 금액과 새 offset, Bronze에 추가된 u를 중심으로 짚는다.
 
 > “같은 PK가 다시 나온 것만으로 중복 수집이라고 할 수는 없겠죠. 원천에서는 한 행을 수정했고, 여기에는 서로 다른 변경 이벤트가 쌓인 것입니다. source.lsn과 토픽·파티션·오프셋을 따로 보는 이유도 여기에 있습니다.”
 
@@ -240,6 +254,12 @@ printf '새 시연 환불 ID: %s-r1\n' "$CASE_ID"
 
 **예상 관찰:** 원천 0행, d는 before 금액 30000 / after null. tombstone은 key가 같고 value 전체가 null이다. Bronze는 null tombstone을 제외하므로 이번 환불의 c/u/d 세 이력을 본다. 파서에서는 d의 업무 PK와 tombstone 분기가 어떻게 표현됐는지 각각 읽는다.
 
+달라진 원천 행 수와 d·tombstone 분기를 요약에서 구분한 뒤, 원문을 **딱 한 번 더 조회**한다. op=d의 JSON 객체 안 `after: null`과 tombstone의 `value: null`을 직접 짚는다.
+
+```bash
+./labs/session02/lab.sh "$CASE_ID" kafka --evidence
+```
+
 > “DELETE 객체 안의 after가 null인 것과 value 전체가 null인 메시지는 다른 입력입니다. 전자는 삭제 이력이고 후자는 tombstone이죠. 같은 함수로 읽어도 이 둘을 구별해서 내보내야 합니다.”
 
 ### 01:33–01:35 — 대조 결과 정리
@@ -256,13 +276,16 @@ printf '새 시연 환불 ID: %s-r1\n' "$CASE_ID"
 
 ## 01:35–01:50 — 수집이 막혔다면 어디부터 볼까
 
-**실제 장애를 만들지 않는다.** 아래 상황을 하나씩 읽고 학생이 다음 확인 지점을 설명하게 한다.
+**화면은 학습지 [E]로 전환한다.** 실제 장애를 만들지 않고 네 상황을 하나씩 읽으며, 전체 채팅이나 구두로 다음 확인 지점을 답하게 한다.
 
 | 학생에게 보여줄 상황 | 강사가 연결할 근거 |
 |---|---|
 | “원천은 바뀌었는데 Kafka에 이번 키가 없습니다.” | commit 여부, publication·include list, connector/task 상태, 조회 범위 |
 | “Kafka에는 있는데 Bronze에서는 안 보입니다.” | Flink 구독 범위·처리·checkpoint, sink commit, 키를 찾는 SQL |
 | “Bronze에 생성·수정은 있는데 삭제가 안 보입니다.” | after만 검색했는지, 실제 key·수집 위치, d와 tombstone 구분 |
+| “Parquet 파일 하나에 c만 보입니다.” | 현재 files 목록과 같은 키의 전체 Bronze 조회, 선택한 파일 범위 |
+
+3번에는 “before 조건도 포함하면 무엇이 달라질까요?”를 추가로 묻는다. 4번은 앞의 실제 Parquet 내용과 연결한다. 슬라이드 25는 추가 참고로 두고, 노트의 조별 활동 대신 위 상황에 전체 채팅이나 구두로 답을 받는다.
 
 필요한 결과만 다시 보여준다. PG 조회는 문장별 10초, Kafka 보존 로그 스캔은 30초, runner·물리 파일 subprocess는 각각 최대 120초로 제한된다. timeout이면 미확인 구간으로 남기며 빈 결과나 성공으로 바꾸어 설명하지 않는다.
 

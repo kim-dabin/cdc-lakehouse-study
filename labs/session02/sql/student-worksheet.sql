@@ -19,7 +19,7 @@ SELECT get_json_object(payload, '$.op') AS op,
        get_json_object(payload, '$.before.amount') AS before_amount,
        get_json_object(payload, '$.after.amount') AS after_amount,
        get_json_object(payload, '$.source.lsn') AS source_lsn,
-       topic, partition_id, kafka_offset
+       topic, partition_id, kafka_offset, _file AS parquet_file
 FROM lake.bronze.cdc_events
 WHERE topic = 'cdc.public.refunds'
   AND get_json_object(payload, '$.after.refund_id') = 'YOUR_REFUND_ID'
@@ -29,7 +29,12 @@ ORDER BY partition_id, kafka_offset;
 -- 전체 테이블의 파일 목록이며 위 환불 ID만의 파일 목록은 아닙니다.
 SELECT file_path, file_format, record_count, file_size_in_bytes
 FROM lake.bronze.cdc_events.files
+WHERE content = 0
+ORDER BY file_path
 LIMIT 10;
+
+-- 위 결과는 데이터 파일 일부입니다. [A]-1의 parquet_file과 file_path를 연결합니다.
+-- 해당 파일이 첫 10개에 없다면 file_path 조건으로 직접 찾습니다.
 
 -- TODO: 강사가 실제 Parquet 내용을 읽는 화면에서 아래를 찾아보세요.
 -- 파일에 저장된 payload·topic·partition_id·kafka_offset:
@@ -72,7 +77,7 @@ WHERE slot_name = 'cdc_lab';
 -- slot active=true이면 Bronze 반영까지 완료됐다고 할 수 있나요?
 
 -- [C] Debezium·Kafka — 설정과 메시지를 연결하기
--- scripts/configure.py에서 비밀번호를 제외한 설정을 읽습니다.
+-- ./labs/session02/lab.sh connector-sanitized 출력에서 비밀번호를 제외한 설정을 읽습니다.
 -- snapshot.mode='initial'과 새 DML의 op=c/u/d는 어떻게 다른가요?
 -- 이미 수집 중인 커넥터를 재기동하면 매번 처음부터 r을 발행하나요?
 -- table.include.list와 PostgreSQL publication 중 한쪽에만 테이블이 있으면 충분할까요?

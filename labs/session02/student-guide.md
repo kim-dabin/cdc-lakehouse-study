@@ -6,6 +6,8 @@
 
 수업 중에는 강사 화면을 보며 [SQL 학습지](sql/student-worksheet.sql)의 조회 조건과 기대값을 작성합니다. 수업 중에는 학생별 서버 기동이나 `submission.md` 작성을 진행하지 않습니다. 수업 후 복습에서는 **개인 환경 구성과 공통 예제 실행**을 진행합니다.
 
+수업 중에는 [A] 조건 고치기, [D]의 DELETE 값 선택, c/u/d 예측, [E] 상황 하나 답하기에 집중합니다. [B]·[C]의 설정은 함께 읽고 전체 서술형 답은 복습에서 이어갑니다.
+
 ## 준비할 것
 
 - 저장소의 최신 자료와 `labs/session02/sql/student-worksheet.sql`.
@@ -56,7 +58,7 @@ CASE_ID=s01-live-10181152
 
 `bronze` 출력의 `op`, `before_amount`, `after_amount`, `refund_id`, `topic`, `partition_id`, `kafka_offset`, `parquet_file`을 연결해 봅니다. **원천 현재 행과 변경 이력은 서로 다른 결과**입니다.
 
-SQL [A]는 `after.refund_id`만 조건으로 사용합니다. DELETE는 after가 null이므로 이 조건으로는 삭제 이력을 찾지 못합니다. `before.refund_id`도 포함하도록 WHERE 조건을 고쳐보세요. 조회 결과가 두 행이라고 해서 곧바로 수집 누락이라고 판단하지 않습니다.
+SQL [A]는 `after.refund_id`만 조건으로 사용합니다. 슬라이드 5를 보며 30–60초 동안 조건을 먼저 고친 뒤 슬라이드 6의 정답과 비교합니다. DELETE는 after가 null이므로 이 조건으로는 삭제 이력을 찾지 못합니다. `before.refund_id`도 포함하도록 WHERE 조건을 고쳐보세요. 조회 결과가 두 행이라고 해서 곧바로 수집 누락이라고 판단하지 않습니다.
 
 ### Parquet의 실제 내용 확인하기
 
@@ -87,6 +89,8 @@ SQL [A]의 `lake.bronze.cdc_events.files`는 Iceberg 현재 테이블이 참조�
 | replication slot | cdc_lab, pgoutput | 소비 진행 위치와 WAL 보존에 관련된 상태 |
 
 publication과 slot은 이름이 같아도 역할이 다릅니다. publication은 무엇을 발행할지, slot은 소비자의 진행 위치·WAL 보존과 관련된 상태를 다룹니다. `active=true`는 해당 slot을 사용하는 연결 상태를 보여주며 Iceberg 반영 완료를 뜻하지 않습니다.
+
+실제 출력에서는 slot 상태의 `active`, `restart_lsn`, `confirmed_flush_lsn`을 봅니다. 슬라이드 14의 `wal_status`는 공식 뷰의 추가 참고 컬럼이며 오늘 helper 출력에는 없습니다.
 
 예제는 `REPLICA IDENTITY FULL`을 사용하므로 이전 amount를 관찰합니다. 모든 PostgreSQL 기본 설정에서 before의 일반 컬럼이 같은 모습으로 들어오는 것은 아닙니다. SQL 출력의 replica identity 코드가 `f`라면 FULL을 뜻합니다.
 
@@ -129,6 +133,8 @@ python3 labs/session02/event_parser.py --fixtures
 
 `event_parser.py`의 `parse_event(raw_key, raw_value, metadata)`는 메시지 한 건을 입력받아 결과를 돌려주는 작은 함수입니다. `kind`로 change·tombstone·invalid를 구분합니다. change에는 `op`, `pk`, `pk_source`, `before`, `after`, 선택한 `row`, `source_lsn`이 들어 있습니다. 원문을 삭제하거나 Bronze를 갱신하는 함수가 아닙니다.
 
+수업에서는 핵심 분기와 c·d·wire-null·JSON 텍스트 `null` 표본을 함께 읽고 나머지 검증 분기는 복습으로 이어갑니다. 슬라이드 19의 축약 코드에서 `value`는 JSON 해석 전 `raw_value`를 뜻합니다. 실제 코드에서 `json.loads` 뒤 `value`가 None인 경우는 `invalid_json_null`이며 wire-null tombstone과 다릅니다.
+
 | 입력 | 해석할 때 볼 것 |
 |---|---|
 | c | 새로 입력된 after |
@@ -144,6 +150,8 @@ SQL [D]는 같은 원리를 Spark SQL로 표현합니다. `COALESCE(after_id, be
 
 fixture 출력의 `origin=synthetic_fixture`를 확인합니다. 각 fixture는 독립 입력이며 실제 수업의 금액 변경 순서를 재생한 기록이 아닙니다. 고정 예제가 통과한 것과 실제 파이프라인에서 이벤트가 수집된 것은 따로 확인해야 합니다.
 
+슬라이드 20의 실제 `parse` 조회는 다음 구간에서 새 CASE_ID를 만든 뒤 진행합니다.
+
 ## 5. 새 키로 예측한 뒤 실제 이벤트 대조 — 01:15–01:35
 
 ### 실행 전에 예상하기
@@ -151,6 +159,8 @@ fixture 출력의 `origin=synthetic_fixture`를 확인합니다. 각 fixture는 
 강사가 새 CASE_ID를 만듭니다. 앞에서 읽은 이월 키와 구분합니다. helper가 기존 수집 예제와 연결되므로 `s01-`로 시작하는 형식을 사용합니다.
 
 각 단계마다 실행 전에 원천 행 수·op·before/after·Bronze 이력 수를 예상해보세요. 환불 ID와 수집 위치를 어디에서 찾을지도 생각합니다. SQL [C]·[D]의 예측과 연결합니다.
+
+강사 화면은 `--summary`로 짧게 보여줍니다. INSERT에서 전체 필드를 맞춘 뒤 UPDATE·DELETE는 달라진 값 중심으로 봅니다. 아래 복습 명령은 `--summary` 없이 원문과 `row` 객체까지 읽으며, INSERT·UPDATE의 추가 `collect-check`는 복습 보강입니다. 요약의 `event_amount`와 원문 파서의 `row.amount`, SQL [D]의 `event_amount`는 같은 이벤트의 선택된 금액으로 대조합니다.
 
 ```bash
 CASE_ID=s01-s02-live-$(date +%m%d%H%M%S)
@@ -200,6 +210,8 @@ CASE_ID=s01-s02-live-$(date +%m%d%H%M%S)
 
 원천 0행, d의 before.amount=30000·after=null, 이번 키의 Bronze c/u/d 이력을 봅니다. Kafka의 내용 있는 op=d와 value=null tombstone을 구분합니다. 이 예제는 tombstone을 제외하고 non-null c/u/d와 r을 Bronze에 보관하므로 Kafka 메시지 수를 Bronze 행 수와 그대로 비교하지 않습니다.
 
+수업에서는 요약으로 구분한 뒤 `kafka --evidence`로 원문을 한 번 더 조회합니다. 위 복습 명령의 `kafka`는 이미 원문 출력이므로 같은 조회를 다시 할 필요는 없습니다. op=d JSON 객체의 `after: null`과 tombstone의 `value: null`을 직접 비교합니다.
+
 같은 Kafka 이벤트는 **topic·partition·offset을 함께** 사용해 대조합니다. offset 순서 비교는 같은 토픽·파티션 안에서 의미가 있고, PK나 source.lsn 하나를 전역 고유 이벤트 ID로 삼지 않습니다.
 
 파서는 운영 중인 Flink와 별도로 원문을 해석합니다. Flink의 raw 적재 방식을 바꾸지 않습니다. 이번 키의 기대 결과를 확인했다고 해서 모든 원천 변경의 무누락·중복 방지나 장애 복구를 보장하는 것은 아닙니다.
@@ -207,6 +219,8 @@ CASE_ID=s01-s02-live-$(date +%m%d%H%M%S)
 ## 6. 어느 구간부터 조사할까 — 01:35–01:50
 
 SQL [E]에서 한 상황씩 읽고 먼저 확인할 곳을 골라봅니다.
+
+강사 화면의 학습지 [E]를 보며 전체 채팅이나 구두로 한 상황에 답합니다. 3번은 before 조건을 포함하면 달라지는 결과를, 4번은 앞서 본 실제 파일 분포와 연결해 생각합니다.
 
 | 관찰한 상황 | 먼저 확인할 것 |
 |---|---|

@@ -2,6 +2,8 @@
 
 강사는 맥미니에서 공통 예제를 실행한다. 학생은 SQL과 이벤트 결과를 먼저 예측하고, 서로 진행한 내용을 짧게 나눈 뒤 강사 화면의 실제 결과와 비교한다. 개인 환경 구성과 공통 예제 재현은 수업 후 복습으로 진행한다. 수업 중 별도 제출 양식을 작성하거나 개인 테이블을 설계하지 않는다.
 
+수업 중에는 SQL [A]의 조건 고치기, [D]의 DELETE 값 선택, c/u/d 예측, [E]의 상황 하나 답하기에 집중한다. [B]·[C]는 화면의 설정을 함께 읽고 전체 서술형 답 작성은 복습에서 이어간다.
+
 이번 시간에는 1회차에서 이어 보기로 했던 **Bronze의 c/u/d 세 이력과 실제 Parquet 내용**부터 확인한다. 그다음 PostgreSQL → Debezium → Kafka의 설정과 이벤트를 따라가고, 작은 Python 파서로 메시지를 해석한다. 개인 설계 확정은 3회차, Silver·Gold 변환과 dbt 구현은 이후 회차다.
 
 ## 오늘 확인할 것
@@ -46,7 +48,7 @@
 
 ## 00:10–00:30 — 남아 있는 이력과 파일 직접 확인
 
-**10–18분:** 같은 환불 ID로 원천과 Bronze를 조회한다. DELETE는 `after`가 null이므로 before에서도 ID를 찾아야 한다. 수집 위치를 정렬해 c: null→20000, u: 20000→30000, d: 30000→null을 나란히 읽는다. 이번 키의 세 이력을 보는 것이며 전체 Bronze가 세 행이라는 뜻이 아니다.
+**10–18분:** 슬라이드 5에서 30–60초 동안 학생이 SQL [A]의 after-only 조건을 먼저 고치게 한 뒤 슬라이드 6의 정답과 비교한다. 같은 환불 ID로 원천과 Bronze를 조회한다. DELETE는 `after`가 null이므로 before에서도 ID를 찾아야 한다. 수집 위치를 정렬해 c: null→20000, u: 20000→30000, d: 30000→null을 나란히 읽는다. 이번 키의 세 이력을 보는 것이며 전체 Bronze가 세 행이라는 뜻이 아니다.
 
 **18–27분:** 현재 Iceberg 파일 경로를 확인한 뒤 그 경로의 Parquet 내용을 읽는다. 학생에게 “테이블 하나는 파일 하나일까요?”, “지금 연 파일에 세 이벤트가 모두 있을까요?”를 묻는다. 여러 파일에 나뉘어 있다면 실제 관찰대로 설명한다. 메타데이터 파일을 보여주는 데서 끝내지 않고 데이터 행을 확인한다. helper는 S3FileIO로 실제 바이트를 읽고 GenericParquetReaders로 디코드한다. `sql_file_records_match`와 `three_event_history_complete`까지 확인한다. [Iceberg 파일 조회](https://iceberg.apache.org/docs/1.10.0/spark-queries/), [파일 디코드 API](https://iceberg.apache.org/javadoc/1.10.0/org/apache/iceberg/data/parquet/GenericParquetReaders.html).
 
@@ -58,6 +60,8 @@
 
 **36–42분:** slot 상태에서 active, restart_lsn, confirmed_flush_lsn을 확인한다. 슬롯은 연결이 끊겨도 남고 WAL 보존 비용이 생길 수 있다. 숫자가 커지는 것을 성공의 전부로 삼거나 LSN 차이를 지연 초로 해석하지 않는다. 기존 슬롯을 소비하거나 진행시키는 함수는 실행하지 않는다. [Logical decoding](https://www.postgresql.org/docs/17/logicaldecoding-explanation.html), [slot 상태](https://www.postgresql.org/docs/17/view-pg-replication-slots.html).
 
+실제 `source-config`의 slot 상태는 위 세 항목으로 읽는다. 슬라이드 14의 `wal_status`는 공식 뷰의 추가 참고 컬럼이며 오늘 helper 출력에는 없다.
+
 **42–48분:** 비밀값을 제외한 Debezium 설정을 읽는다. `pgoutput`, slot·publication 이름, include list, topic prefix, snapshot mode, tombstone 설정을 원천의 실제 구성과 연결한다. [Debezium 3.2](https://debezium.io/documentation/reference/3.2/connectors/postgresql.html).
 
 **48–50분:** “publication에는 있는데 include list에는 없다면?”, “원천은 바뀌었는데 이벤트가 없다면 어떤 조건부터 볼까요?”를 묻는다. 현재 코드를 근거로 답하고, 장애를 만들려고 설정을 바꾸지는 않는다.
@@ -66,9 +70,9 @@
 
 **55–60분:** r과 c를 비교한다. `snapshot.mode=initial`인 기존 환경을 정상 재시작한다고 항상 r이 다시 생기는 것은 아니다. `snapshot-sample`은 현재 Bronze에 보존된 r을 조회하며 `origin=live_bronze`와 `sample_found`를 확인한다. 표본이 없으면 독립 fixture로 설명하고 오늘 새로 관찰한 이벤트처럼 말하지 않는다. 스냅샷을 재현하려고 connector나 offset을 지우지 않는다.
 
-**60–67분:** 독립 Python 파서가 받는 입력과 내보내는 필드를 먼저 보여준다. 이미 돌아가는 Kafka Connect나 Flink 코드를 교체하는 것이 아니라 이벤트 해석을 연습하는 함수다. 업무 PK, `source.lsn`, `(topic, partition, offset)`의 역할을 구분한다. offset 순서는 같은 토픽·파티션 안에서만 비교한다. [Kafka 파티션](https://kafka.apache.org/39/design/protocol/).
+**60–67분:** 독립 Python 파서의 입력·출력과 핵심 분기를 보여준다. 슬라이드 19의 축약 코드에서 `value`는 JSON 해석 전 `raw_value`를 뜻한다. 실제 코드에서 `json.loads` 뒤 `value`가 None이면 JSON 텍스트 `null`이므로 `invalid_json_null`이다. 이미 돌아가는 Kafka Connect나 Flink 코드를 교체하는 것이 아니라 이벤트 해석을 연습하는 함수다. 업무 PK, `source.lsn`, `(topic, partition, offset)`의 역할을 구분한다. offset 순서는 같은 토픽·파티션 안에서만 비교한다. [Kafka 파티션](https://kafka.apache.org/39/design/protocol/).
 
-**67–72분:** c/u/d와 tombstone, r, 잘못된 입력을 먼저 예측한 뒤 fixture로 확인한다. DELETE는 before에서 ID를 찾고, value 전체가 null인 tombstone은 `after=null`인 삭제 객체와 별도로 처리한다. 해석할 수 없는 입력을 정상 행으로 꾸며내지 않는 점도 본다. 예시 입력의 출처를 실제 Kafka 조회와 구분한다. JSON null과 Python None의 출력 차이는 여기서 정리한다. [Python json](https://docs.python.org/3.11/library/json.html).
+**67–72분:** 대표 fixture인 c·d·wire-null·JSON 텍스트 `null`의 결과를 먼저 예측한 뒤 함께 읽는다. DELETE는 before에서 ID를 찾고, value 전체가 null인 tombstone은 `after=null`인 삭제 객체와 별도로 처리한다. 나머지 검증 분기는 복습으로 남긴다. 예시 입력의 출처를 실제 Kafka 조회와 구분한다. JSON null과 Python None의 출력 차이는 여기서 정리한다. 슬라이드 20의 실제 `parse` 명령은 다음 구간에서 새 CASE_ID를 만든 뒤 실행한다. [Python json](https://docs.python.org/3.11/library/json.html).
 
 **72–75분:** 같은 선택을 SQL로 옮긴다. `after.refund_id`만 보는 조건과 `before.refund_id`까지 보는 조건을 비교한다. 답이 다르면 DELETE 입력 한 건으로 다시 설명하게 한다. 이 SQL은 정상 이벤트의 값 선택을 비교하는 예이며 파서의 모든 오류 검사를 재구현하지 않는다. Silver 최신 상태를 만드는 MERGE나 중복 제거 구현으로 확장하지 않는다.
 
@@ -78,17 +82,22 @@
 
 **77–82분 INSERT / 82–87분 UPDATE / 87–93분 DELETE:** 실행 전에 원천 행 수·op·before/after를 묻는다. 각 단계에서 DML → 원천 조회 → 도착 대기 → Kafka → Bronze → 실제 Kafka 입력의 파서 출력을 대조한다. 원천 현재 행과 append 이력이 어떻게 다른지 연결한다. 같은 PK의 여러 이벤트를 곧바로 중복 수집이라고 부르지 않는다.
 
+INSERT에서 전체 필드를 한 번 맞추고 UPDATE·DELETE는 달라진 행 수·금액·offset·tombstone 분기만 짚는다. DELETE 요약 뒤에는 `kafka --evidence`로 원문을 딱 한 번 더 조회해 op=d 객체와 value=null을 직접 비교한다.
+
 **93–95분:** DELETE 뒤 이번 키의 c/u/d 세 이력과 tombstone 분기를 정리한다. 자동 대조 결과는 이 키의 합성 시나리오 범위임을 설명한다. 파서에서 `origin=live_kafka`를 확인하고 앞의 `synthetic_fixture`와 구분한다. 예측이 달랐던 부분 한 가지를 학생에게 묻는다.
 
 ## 01:35–01:50 — 어디부터 확인할지 판단하기
 
-다음 세 상황을 차례로 제시한다. 실제 장애를 일으키지 않고 관찰 결과를 근거로 토의한다.
+학습지 [E]를 화면에 띄우고 네 상황을 차례로 제시한다. 실제 장애를 일으키지 않고 전체 채팅이나 구두로 한 상황씩 답을 받는다.
 
 | 관찰 | 먼저 제안할 확인 지점 | 피할 단정 |
 |---|---|---|
 | 원천은 바뀌었는데 Kafka에 해당 키가 안 보임 | commit·수집 대상·connector/task·조회 범위 | “CDC가 데이터를 잃었다” |
 | Kafka에 있지만 Bronze에 안 보임 | Flink 입력 범위·처리·checkpoint·sink commit·조회 조건 | “checkpoint 성공이니 적재도 끝났다” |
 | Bronze에 d가 없다고 보임 | after만 검색했는지, 실제 키와 토픽·파티션·offset | “삭제 이벤트는 저장하지 않는다” |
+| Parquet 파일 하나에 c만 보임 | 현재 files 목록과 같은 키의 전체 Bronze 조회 | “u/d 수집에 실패했다” |
+
+3번에는 “before 조건도 포함하면 무엇이 달라질까요?”를 추가로 묻고, 4번은 앞서 확인한 실제 파일 분포와 연결한다. 슬라이드 25는 추가 참고로 두며, 노트의 조별 활동 대신 전체 채팅이나 구두로 답을 받는다.
 
 학생이 확인 순서와 이유를 말하게 하고, 강사는 조회 결과와 연결해 보완한다. connector와 task의 RUNNING은 상태 정보이며 해당 이벤트의 도착 증거를 대신하지 않는다. [Kafka Connect 상태](https://kafka.apache.org/39/kafka-connect/administration/), [Iceberg commit](https://iceberg.apache.org/docs/1.10.0/flink-writes/).
 

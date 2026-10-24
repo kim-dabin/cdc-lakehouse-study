@@ -1,12 +1,12 @@
 # 8회 실습 진행안
 
-Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명하는 과정이 아니다. 이미 배운 도구로 개인 프로젝트를 설계하고, 새로 다루는 CDC·Flink·Iceberg·dbt를 연결한다. 수업당 2시간, 개인 구현과 기록은 회차 사이에 진행한다. **3회차부터 수업은 파이프라인 설계 중심으로 진행한다.** 요구사항과 대안을 먼저 비교하고, 짧은 강사 실험은 그 선택을 이해하는 데 사용한다. 학생은 수업 초반부터 자기 설계에 판단을 남긴다.
+Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명하는 과정이 아니다. 이미 배운 도구로 개인 프로젝트를 설계하고, 새로 다루는 CDC·Flink·Iceberg·dbt를 연결한다. 수업당 2시간을 기본으로 하되, 3회차 확장 자료는 휴식 15분을 포함한 본편 약 215분과 선택 부록으로 구성한다. 개인 구현과 기록은 회차 사이에 진행한다. **3회차부터 수업은 파이프라인 설계 중심으로 진행한다.** 요구사항과 대안을 먼저 비교하고, 짧은 강사 실험은 그 선택을 이해하는 데 사용한다. 학생은 수업 초반부터 자기 설계에 판단을 남긴다.
 
 | 회차 | 수업에서 설계·검토할 것 | 학생 산출물 |
 |---|---|---|
 | 1 | OT·CDC/Iceberg 개념·아키텍처·환경 확인, 공통 환불 c/u/d 대조 | 공통 예제 SQL·이벤트 사전 예측, 원천/Kafka/Bronze 관찰 기록 |
 | 2 | 공통 예제의 Debezium 초기 스냅샷/WAL, Kafka key·before/after/op/LSN | 공통 이벤트 표본과 수집 설정·동작 기록 |
-| 3 | Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정: raw 입력·메타데이터·필터·append·조회 경계 | 개인 도메인·2~3테이블·PK/FK·변경 의미·토픽·Bronze 보존 정보와 선택 이유 |
+| 3 | Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정: 정의·대안·writer/checkpoint/commit·MinIO·운영 | 개인 도메인·2~3테이블·키/순서·이벤트/삭제 정책·토픽·Bronze 정보·후속 조인 키 |
 | 4 | 현재 상태의 키·최신 버전·삭제·재전달 규칙 설계, Spark MERGE로 확인 | 개인 Silver 모델과 변경·중복 검증 |
 | 5 | 지표·모델 의존성·검증 조건 설계, dbt로 확인 | 개인 Gold 모델, 기대값을 확인하는 테스트 |
 | 6 | 전체 재계산 기준선과 증분 처리 범위 비교, 과거 기간 정정 | 증분 설계·재처리 SQL·전체 계산 결과 대조 |
@@ -35,14 +35,14 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 
 ### 3회차 — Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정
 
-[3회차 가이드](session03/student-guide.md)와 [설계 학습지](session03/design-worksheet.md)를 사용한다. 초반에 개인 도메인을 고르고 설명마다 자신의 판단을 한 줄씩 남긴다.
+[3회차 가이드](session03/student-guide.md)와 [설계 학습지](session03/design-worksheet.md)를 사용한다. **본편 약 215분(휴식 10분 + 5분 포함)**이며 정의·내부 동작·운영을 설명한 뒤 개인 설계 30분과 리뷰 12분을 진행한다. 심화 부록은 선택이다.
 
-1. 업무 질문, 수정·삭제·재처리 요구와 원천→Bronze/최종 지표의 두 지연 목표를 정한다.
-2. 실제 Flink SQL의 raw 원문·Kafka 전달 메타데이터·시작 위치를 읽고, tombstone 제외와 `op=d` 보존, Bronze append의 책임을 설명한다. Iceberg 기본 구조와 checkpoint·commit·조회 경계도 연결한다.
-3. 짧은 관찰 두 가지로 필터·append의 결과와 실제 조회 시점을 확인한다. 원천 c/u/d 전체 재실습이나 명령 실행 자체를 학습 목표로 두지 않는다.
-4. 개인 설계 30분 동안 도메인·원천 테이블 2~3개의 이름·한 행의 의미·PK/FK·변경과 삭제의 의미, 토픽·Bronze 보존 정보와 선택 이유를 확정한다. 재전달 기대값·조회 조건을 정리하되 실제 DDL 구현은 필수가 아니며, 미정인 최신 순서 규칙은 보류 질문으로 남겨 다음 Silver 구현에 연결한다.
+1. 사용자·변경·재처리 요구와 두 지연 목표를 정하고, Flink 처리 엔진·Iceberg 테이블 형식·저장소·Catalog·Spark의 역할을 구분한다.
+2. 배치·Spark Structured Streaming·Connect sink를 비교해 선택 이유와 비용을 설명한다. raw 입력·메타데이터·필터·append를 읽고 writer → checkpoint 상태 → 테이블 commit의 내부 단계를 연결한다.
+3. 원천/Bronze 이력, **MinIO 필수 10분**, commit/조회 경계를 관찰한다. Catalog의 현재 참조에서 JSON·manifest·data를 따라가고 Spark snapshots/files/metadata 이력/같은 키 SELECT로 교차 확인한다. 운영 지표와 장애 사례에서는 다음 증거를 고른다.
+4. 개인 도메인·원천 2~3개 테이블의 한 행·PK/FK·시간/순서·이벤트 유형·삭제 정책, 토픽·Bronze 보존 정보와 후속 조인·집계 키를 확정한다. 실제 DDL 구현은 필수가 아니다. 대표 두 사례 리뷰 8분과 전원 자가 점검 4분 뒤 후속 Silver 구현에 연결한다.
 
-개인 공통 동작은 [전체 실행 안내](../docs/self-study.md)로 확인할 수 있다. 수업 중 설치나 긴 명령 실행, 별도 제출 양식 작성을 추가하지 않는다.
+개인 공통 동작은 [전체 실행 안내](../docs/self-study.md)로 확인한다. 이미 준비된 환경에 무조건 새 job을 제출하지 않고 안내의 상태별 실행 방식을 따른다. 수업 중 설치나 긴 명령 실행, 별도 제출 양식 작성을 추가하지 않는다.
 
 ## 4–5회차: 빨리 도착해도 숫자가 틀리면 안 된다
 
@@ -81,4 +81,4 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 
 - [2회차: PostgreSQL CDC 수집과 변경 이벤트 검증](session02/README.md) — Bronze 세 이력·실제 Parquet, 수집 설정, 독립 Python 파서와 구간별 진단.
 
-- [3회차: Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정](session03/README.md) — raw 입력·메타데이터·필터·append 읽기, 짧은 관찰과 개인 설계 확정·리뷰.
+- [3회차: Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정](session03/README.md) — Flink·Iceberg 정의와 대안, writer/checkpoint/commit, MinIO·운영 관찰과 개인 설계 확정·리뷰.

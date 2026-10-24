@@ -1,18 +1,21 @@
 # 3회차 — Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정
 
-**120분 · Flink 입력·출력 설계 읽기 · 짧은 강사 실험 두 가지 · 개인 설계 확정**
+**본편 약 215분(휴식 10분 + 5분 포함) · 정의와 선택 이유 · 내부 동작·운영 · MinIO 연결 관찰 · 개인 설계**
 
-Flink가 Kafka의 원문과 전달 정보를 어떻게 받아 Bronze에 남기는지 실제 SQL로 읽는 시간입니다. tombstone 필터와 append가 남기는 결과, 파일 저장과 테이블 조회의 경계를 짧게 확인합니다. 초반부터 각자의 도메인에 선택을 적용하고, 개인 작업 시간에는 원천 테이블과 적재할 정보를 확정합니다.
+Flink와 Iceberg가 무엇인지부터 배웁니다. 이미 배운 Kafka·Spark·S3와 역할을 나누고, 배치·Spark Structured Streaming·Connect sink와 비교해 왜 이 구성을 선택했는지 생각합니다. 실제 raw 적재 SQL을 읽은 뒤 writer가 파일을 준비하고 checkpoint 상태를 거쳐 테이블을 commit하는 과정을 따라갑니다.
 
-- [수업 슬라이드 PPTX](slides/03-session03.pptx) · [PDF](slides/03-session03.pdf): 학생용 자료.
-- [학생 가이드](student-guide.md): 120분 흐름과 실험을 해석하는 질문.
-- [설계 학습지](design-worksheet.md): 공간 예약 예시와 개인 도메인·테이블 설계.
-- [공식 참고 문서](references.md): 기술 선택과 관찰 경계의 근거.
-- [개인 공통 예제 실행](../../docs/self-study.md): 개인 Docker 환경의 실행 계획·결과 확인.
+- [수업 슬라이드 PPTX](slides/03-session03.pptx) · [PDF](slides/03-session03.pdf): 본편과 선택 부록.
+- [학생 가이드](student-guide.md): 약 215분 흐름, 개념 설명·관찰·운영 판단 질문.
+- [설계 학습지](design-worksheet.md): 공간 예약 예시와 개인 도메인·테이블 확정.
+- [파일·metadata 관찰 SQL](metadata-inspection.sql): Spark 조회 네 가지와 별도 Catalog PostgreSQL 조회. 연결을 구분해 한 SELECT씩 사용합니다.
+- [공식 참고 문서](references.md): 선택·내부 동작·운영 판단의 근거.
+- [개인 공통 예제 실행](../../docs/self-study.md): 기존 개인 Docker 환경의 실행 계획·결과 확인.
 - [전체 아키텍처](../../docs/architecture.md): 데이터 흐름·저장·실행 환경.
 
-수업에서는 강사 맥미니 화면을 보고 예상과 실제 증거를 비교합니다. 학생별 환경 설치나 공통 예제의 긴 명령 실행을 수업 진도로 삼지 않습니다. Spark Silver와 dbt Gold 구현은 후속 회차에 이어갑니다.
+수업 중 실행은 강사 맥미니 화면에서 봅니다. 학생은 예상·SQL 읽기·설계 판단에 참여하며 새 환경 설치나 긴 명령 입력을 수업 진도로 삼지 않습니다. MinIO에서 `warehouse/bronze/cdc_events`의 `data`·`metadata`를 보는 **10분 관찰은 본편에 포함**됩니다. 콘솔에서 경로·크기·시각을 보고 JSON 내용은 강사가 사전 준비한 로컬 편집기로 확인합니다. Catalog의 현재 참조와 snapshots·files·metadata 이력·같은 키 SELECT를 연결합니다.
 
-25~35분에는 Flink의 raw 입력·전달 메타데이터·시작 위치, null tombstone 필터와 Bronze append를 읽습니다. 35~45분에는 Iceberg의 Catalog·Metadata·Data, 파일 저장과 테이블 commit·조회 경계를 연결합니다. Iceberg는 기본 구조까지만 다루며 Manifest·CAS·CoW/MoR·파일 튜닝은 후속 회차로 둡니다. 두 짧은 실험과 개인 설계 30분·리뷰 12분은 유지합니다.
+전체 흐름은 문제와 요구 → 도구 정의 → 대안 → Flink 입력·출력 → Iceberg·commit → 연결 관찰 → 운영 판단입니다. 개인 설계 전 짧은 휴식을 두고 설계 30분과 리뷰 12분을 남깁니다. 리뷰는 대표 두 사례 8분과 전원 자가 점검 4분으로 진행합니다. 원천 2~3개 테이블의 한 행·PK/FK·시간과 순서 기준·이벤트 유형·삭제 정책, 토픽·Bronze 보존 정보와 후속 조인·집계 키를 확정하며 실제 DDL 구현은 필수가 아닙니다.
 
-오늘 확정할 것은 도메인, 원천 테이블 2~3개의 이름·한 행의 의미·PK/FK·수정과 삭제의 의미, 토픽·Bronze 보존 정보와 선택 이유입니다. 실제 DDL 구현을 필수로 요구하지 않습니다. 최신 상태 규칙과 지연 목표에 근거가 부족하면 보류 이유와 질문을 남깁니다. 제출 방법과 기한은 공지를 따르며 8회차 이후 발표는 별도 일정입니다.
+Flink checkpoint는 별도 볼륨의 복구 상태이고 Iceberg commit은 테이블 변경 경계입니다. 파일이 생겼다는 사실이나 checkpoint 성공만으로 이번 키의 조회를 단정하지 않습니다. 현재 raw Bronze는 append이며 업무 키 upsert·업무 중복 제거를 하지 않습니다. 단일 원천·토픽별 1파티션·parallelism 1인 학습 환경의 한계도 함께 다룹니다.
+
+Silver·Gold 구현은 후속 회차로 이어갑니다. 선택 부록 전체를 새 과제로 요구하지 않으며 제출 방법과 기한은 공지를 따릅니다. **최종 발표는 8회 스터디 이후 별도 일정입니다.**

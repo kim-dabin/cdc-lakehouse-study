@@ -2,6 +2,8 @@
 
 **공통 주문·결제·환불 예제 · 강사 맥미니 공유 화면 + 학생 예측·SQL·설계 · 개인 환경 복습**
 
+Flink 선행 학습은 필요하지 않습니다. 역할과 SQL 예제부터 이해한 뒤 실행 구조와 복구 개념으로 넘어갑니다.
+
 지난 시간에는 공통 예제의 PostgreSQL 변경을 Debezium과 Kafka에서 확인했습니다. 이번에는 같은 `orders`·`payments`·`refunds` 예제로 **Flink → Iceberg Bronze 적재와 지연**을 확인합니다. 그 사이에서 Flink와 Iceberg가 무엇을 하는지, 왜 Kafka에서 바로 파일로 복사하지 않는지, 파일이 생겼는데도 테이블 조회에는 안 보일 수 있는지 배웁니다. 작업이 멈추면 무엇이 있어야 다시 이어갈 수 있는지도 설명해봅니다.
 
 수업을 마치면 도구 이름을 나열하는 대신 **“이 요구 때문에 이 구성을 골랐고, 이 증거로 동작을 확인하겠다”**고 말할 수 있어야 합니다. 마지막에는 각자의 도메인과 원천 테이블, 토픽·Bronze 보존 정보를 확정합니다.
@@ -33,9 +35,9 @@
 |---|---|---|
 | 1 | 첫날 로드맵·공통 원천 구조·변경 시나리오 | orders → payments → refunds와 c/u/d 기대값 |
 | 2 | 업무 요구와 두 지연 목표 | 원천→Bronze와 원천→최종 지표의 차이 |
-| 3 | Flink·Iceberg의 정의와 대안 | 처리·저장·metadata·조회 역할, 선택 이유와 비용 |
-| 4 | Flink 입력·필터·writer·복구 상태 | 원문·전달 정보·append 책임 |
-| 5 | Iceberg 내부와 checkpoint·commit·조회 | 파일과 테이블 상태의 경계 |
+| 3 | Flink 첫 소개·배치와 스트리밍 | Kafka 다음 처리 주체와 이미 배운 Spark와의 관계 |
+| 4 | 환불 한 건의 SQL·job 실행·복구 지점 | source·sink·JobManager·TaskManager·checkpoint를 순서대로 이해 |
+| 5 | Iceberg 파일·테이블·commit과 선택 이유 | 파일과 테이블 확정의 경계, 대안과 운영 비용 |
 | 6 | 공통 이력 → MinIO 파일 → 새 변경·지연 관찰 | 같은 키·파일·checkpoint·commit·SELECT 대조 |
 | 7 | 운영 지표·장애 조사·보존 | 첫 확인 지점과 필요한 증거 |
 | 8 | 개인 도메인·테이블 설계 확정 — 30분 | 원천 2~3개·키·변경·토픽·Bronze 정보 |
@@ -69,21 +71,70 @@
 
 하루 한 번 확정 보고서를 읽는 업무와 짧은 간격으로 환불 현황을 보는 업무는 같은 구성이 필요하지 않을 수 있습니다. 지연뿐 아니라 중간 변경 이력, 다시 계산할 입력, 원천 조회 부담과 운영할 서비스 수도 선택에 영향을 줍니다. 이 분석용 파이프라인이 서비스의 결제·환불 트랜잭션을 대신하는 것은 아닙니다.
 
-학습지에는 목표와 필요한 이유를 적습니다. 예제의 checkpoint 10초를 내 프로젝트의 지연 보장으로 복사하지 않습니다. 아직 정하지 못했다면 확인할 정보를 남깁니다.
+학습지에는 목표와 필요한 이유를 적습니다. 제공된 설정값을 내 프로젝트의 지연 보장으로 그대로 복사하지 않습니다. 아직 정하지 못했다면 확인할 정보를 남깁니다.
 
-## 2. Flink와 Iceberg는 각각 무엇인가요?
+## 2. Flink를 처음 만난다면 이 순서로 읽어보세요
 
-### Flink — 계속 들어오는 데이터를 처리하는 엔진
+### ① Kafka 다음에는 왜 처리 엔진이 필요한가요?
 
-**Flink는 계속 들어오는 데이터를 처리하고, 중단된 작업을 복원하는 분산 실행 엔진입니다.** Kafka에 이벤트가 도착해도 Iceberg 테이블에 저절로 적재되지는 않습니다. 이벤트를 계속 읽고, 저장할 값을 골라 파일과 테이블로 만드는 실행 주체가 필요합니다. 이번 프로젝트에서는 Flink가 그 역할을 맡습니다.
+Kafka에 환불 이벤트가 들어왔다고 Iceberg 테이블에 저절로 적재되지는 않습니다. 이벤트를 계속 읽고 저장할 값을 골라 결과로 보내는 실행 주체가 필요합니다. **Flink는 계속 들어오는 데이터를 읽고 처리하는 실행 엔진**입니다. 이번에는 PostgreSQL을 직접 읽는 것이 아니라 Kafka를 입력으로 받아 Bronze 적재를 실행합니다.
 
-역할을 나누면 Debezium은 PostgreSQL의 변경을 이벤트로 만들고, Kafka는 이벤트를 보관·전달합니다. Flink는 Kafka를 입력으로 읽어 Iceberg Bronze 적재를 실행하고, Iceberg는 파일을 일관된 테이블 상태로 관리합니다. 현재 Flink SQL은 Kafka value 원문과 전달 정보를 append합니다. tombstone을 제외하는 것은 Flink의 자동 동작이 아니라 우리가 작성한 `WHERE payload IS NOT NULL` 조건입니다. 업무 집계·window·join이나 업무 키별 중복 제거를 수행하지 않으며, 현재 상태를 만드는 책임은 후속 Silver에 있습니다.
+Debezium은 DB 변경을 이벤트로 만들고, Kafka는 이를 보관·전달하며, Flink는 읽고 처리합니다. Iceberg는 결과 파일을 테이블로 관리합니다. 먼저 이 역할만 구분하면 됩니다. 복구나 저장 내부는 뒤에서 하나씩 연결합니다.
 
-Flink SQL의 지속 INSERT는 제출한 job이 계속 새 입력을 처리합니다. JobManager는 실행과 checkpoint를 조정하고 TaskManager는 실제 task를 실행합니다. source → 연산 → sink는 논리 흐름이며 단계마다 별도 서버가 있다는 뜻은 아닙니다. 집계가 없는 이 job에도 **어디까지 읽었는지, 어떤 파일 작업을 아직 테이블에 확정하지 않았는지**를 복구할 상태가 필요합니다. checkpoint와 Iceberg commit이 어떻게 연결되는지는 뒤에서 구분해 봅니다.
+**스스로 확인:** Kafka에 도착한 사실만으로 Bronze에도 도착했다고 할 수 있나요? → 아닙니다. 처리·적재를 거쳐 실제 조회로 확인해야 합니다.
 
-이 구성을 사용하면 연속 처리와 복구 상태를 함께 다룰 수 있지만, 상시 실행하는 엔진·상태 저장·connector·운영 지표를 관리해야 합니다. Flink가 유일한 선택은 아닙니다. 단순 raw append에는 Connect sink나 기존 Spark를 활용하는 구성이 더 단순할 수 있으며, 다음 절에서 요구 지연과 운영 부담을 기준으로 비교합니다. [공식 개념](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/overview/), [실행 구조](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/flink-architecture/).
+### ② 배치와 스트리밍은 무엇이 다른가요?
+
+배치는 정해진 범위의 데이터를 처리해 종료하는 방식이고, 스트리밍은 계속 도착하는 입력을 이어서 처리하는 방식입니다. 이번 환불 변경처럼 입력이 계속 생기는 흐름을 스트림이라고 부릅니다.
+
+이미 배운 Spark도 Structured Streaming으로 스트림을 처리할 수 있습니다. Spark는 배치만, Flink는 실시간만 가능한 도구라고 나누지 않습니다. 어떤 방식과 도구를 사용할지는 허용 지연·기존 환경·운영 부담으로 비교합니다. 이 스터디에서는 Flink로 지속 처리와 복구·테이블 확정의 연결을 배웁니다.
+
+### ③ 환불 한 건은 어떻게 처리하나요?
+
+입력을 읽는 곳을 **source**, 처리 결과를 보내는 곳을 **sink**라고 부릅니다. 이번 흐름은 Kafka source → null 필터·컬럼 선택 → Iceberg sink입니다. `kafka_events`의 Kafka 연결과 출력 Iceberg 테이블·Catalog 연결은 앞선 DDL(CREATE TABLE·CREATE CATALOG)로 미리 등록되어 있습니다. 아래 INSERT SELECT만으로 연결을 처음 만드는 것은 아닙니다. 환불 20,000원 생성 이벤트 한 건을 이 순서로 따라가 봅니다.
+
+```sql
+INSERT INTO lake.bronze.cdc_events
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events
+WHERE payload IS NOT NULL;
+```
+
+`INSERT INTO`는 보낼 테이블, `SELECT`는 남길 값, `FROM`은 읽을 입력, `WHERE`는 남길 조건입니다. 지금은 SQL을 새로 제출하지 않고 실행 중인 작업의 의미를 읽습니다. `payload`에는 Kafka value 원문을 받습니다. **tombstone은 같은 키에 대해 value가 null인 Kafka 삭제 표시 레코드**입니다. 이 Debezium 예제에서는 d 본문 뒤에 옵니다. `WHERE payload IS NOT NULL`은 이 tombstone을 제외하며, Flink의 자동 삭제 정책이 아닙니다. 이 Kafka 입력에 대한 지속 INSERT가 제출 뒤 어떤 작업으로 실행되는지는 다음 단계에서 봅니다.
+
+환불이 30,000원으로 정정되면 앞의 Bronze 행을 덮어쓰지 않고 정정 이력 한 행을 더 남깁니다. `op=d` 삭제 이벤트도 본문이 있어 보존하고, 뒤따르는 value 전체 null tombstone만 제외합니다. 현재 SQL은 업무 JOIN·집계·upsert·업무 중복 제거를 하지 않습니다. 원천 FK를 Bronze에 자동으로 강제하지도 않습니다. 현재 상태 계산은 후속 Silver가 맡습니다.
+
+**스스로 확인:** 원천에서 같은 환불을 생성·정정·삭제하면 Bronze의 앞선 이력도 사라질까요? → 아닙니다. 이번 구성에서는 c/u/d 세 이력이 남습니다.
+
+### ④ 제출한 SQL은 누가 실행하나요?
+
+**SQL Client**는 SQL을 제출하는 도구입니다. 제출되어 실행되는 처리 작업을 **job**이라고 부르고, job을 나눠 실제로 실행하는 단위를 **task**라고 부릅니다. 이번 Kafka 입력에 대한 지속 INSERT는 새 입력을 계속 처리하는 job이 됩니다. SQL을 입력한 창이 직접 매번 Kafka를 읽는 것은 아닙니다.
+
+**JobManager**는 작업 실행을 조정하고, **TaskManager**는 실제 입력 읽기·처리·출력 작업을 실행합니다. source → 처리 → sink는 논리 단계이므로 반드시 서버 세 대라는 뜻이 아닙니다.
+
+**스스로 확인:** JobManager와 TaskManager는 각각 무엇을 하나요? → JobManager는 작업을 조정하고, TaskManager는 실제 task를 실행합니다. 그림의 논리 단계 수와 서버 수는 같은 뜻이 아닙니다.
+
+### ⑤ 읽은 직후 작업이 멈췄다면 어떻게 하나요?
+
+환불 이벤트를 읽던 중 작업이 멈췄다고 가정해 봅니다. 너무 앞에서 새로 읽으면 이미 저장한 이력을 다시 추가할 수 있고, 너무 뒤에서 시작하면 아직 저장하지 못한 입력을 놓칠 수 있습니다. Kafka에 원문이 있다는 것만으로 시작 위치가 정해지지는 않습니다.
+
+다시 처리하려면 **읽은 위치와 처리 중인 상태**를 함께 알아야 합니다. 집계가 없는 이번 작업에도 입력 위치와 적재 중인 파일 작업 정보가 필요합니다. 마지막으로 읽었다는 사실과 테이블에 확정했다는 사실은 다릅니다.
+
+### ⑥ Checkpoint는 이어서 처리할 복구 지점입니다
+
+**checkpoint는 입력 위치와 처리 상태를 일관된 복구 지점으로 저장하는 기능**입니다. 저장 → 중단 → 복원 → 이어서 처리의 순서로 이해합니다. 작업이 멈추면 저장한 위치와 상태를 복원하고 그 뒤 구간을 다시 처리할 수 있습니다.
+
+checkpoint는 Kafka 원문 전체나 원천 DB 전체의 복사본이 아닙니다. 복구에 필요한 입력·상태·관련 파일이 보존돼야 합니다. 상태 없이 새 job을 제출해 보관된 과거 입력을 다시 읽는 것과 저장된 상태에서 복원하는 것도 다릅니다.
+
+이번 실습에서 설정한 10초는 checkpoint **시도 간격**입니다. 매번 10초 안에 완료되거나 환불이 10초 안에 조회된다는 보장은 아닙니다. 파일 준비와 테이블 확정의 연결은 4~5절에서 이어갑니다.
+
+**스스로 확인:** checkpoint만 있으면 Kafka에서 보관 기간이 지나 사라진 원문도 되살릴 수 있나요? → 아닙니다. checkpoint는 원문 전체 복사본이 아니며, 이어서 읽을 입력도 보존돼야 합니다.
+
+[Flink 공식 개념](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/overview/), [실행 구조](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/flink-architecture/), [Checkpointing](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/dev/datastream/fault-tolerance/checkpointing/).
 
 ### Iceberg — 파일을 일관된 테이블 상태로 관리하는 형식
+
+**metadata는 스키마·테이블 상태·파일 참조 등을 설명하는 정보**입니다. **snapshot은 일관된 테이블 상태**, **Catalog는 테이블 이름에서 현재 metadata 파일의 위치를 찾는 곳**입니다.
 
 Parquet는 실제 행과 컬럼을 파일에 담는 형식입니다. Iceberg는 그 파일 중 무엇을 어떤 스키마와 테이블 상태로 읽을지 관리하는 개방형 테이블 형식입니다. 파일 저장은 S3 호환 저장소, SQL 계산은 Flink나 Spark가 담당합니다. Iceberg 자체가 별도 쿼리 서버나 S3 저장소인 것은 아닙니다.
 
@@ -105,8 +156,8 @@ Parquet는 실제 행과 컬럼을 파일에 담는 형식입니다. Iceberg는 
 | 대안 | 검토할 상황 | 확인할 조건·비용 |
 |---|---|---|
 | 정기 배치·수정 시각 증분 | 허용 지연이 길고 추출 범위가 명확함 | 원천 조회 부하, 물리 삭제·중간 변경·늦은 정정 포착 |
-| Kafka → Spark Structured Streaming → Iceberg | 기존 Spark 운영을 활용하고 micro-batch가 요구 지연을 만족함 | trigger·checkpoint·sink 호환, 파일과 commit 관리 |
-| Kafka → Iceberg Connect sink | connector의 변환·라우팅·적재 의미로 충분함 | 입력 형식·설정·버전 호환과 commit 조정 |
+| Kafka → Spark Structured Streaming → Iceberg | 기존 Spark 운영을 활용하고 마이크로배치(입력을 작은 구간으로 나누어 처리)가 요구 지연을 만족함 | trigger(실행 주기)·checkpoint·출력 연결 호환, 파일과 commit 관리 |
+| Kafka → Iceberg Connect sink | connector(연결 도구)의 변환·라우팅(출력 경로 선택)·적재 의미로 충분함 | 입력 형식·설정·버전 호환과 commit 조정 |
 | Kafka → Flink → Iceberg | 지속 처리와 복구 상태·출력 경계를 분리해 다룸 | 새 엔진의 상시 리소스, 상태 저장·관측·유지 관리 |
 
 Kafka 없이 직접 CDC 적재를 맡는 구조도 도구의 source/sink 지원과 재처리 요구에 따라 검토할 수 있습니다. 그때는 브로커의 보관·소비자 분리가 없어져도 괜찮은지, 원천 로그와 복구 위치를 누가 관리하는지 확인해야 합니다.
@@ -123,6 +174,11 @@ Kafka 없이 직접 CDC 적재를 맡는 구조도 도구의 source/sink 지원�
 
 [실제 적재 SQL](../../flink/ingest.sql.template)의 `format='raw'`는 Kafka value를 `payload STRING`으로 받습니다. 여기서 Debezium JSON을 현재 상태 테이블로 해석하지 않습니다. 현재 보존하는 원문은 Kafka value이며 key·headers 전체를 저장하는 구성은 아닙니다. 원문을 남기므로 나중에 해석 규칙을 바꿔 다시 확인할 근거가 생깁니다. 대신 저장량이 늘고, 이후 파싱·스키마 검증 책임이 남습니다. 잘못된 JSON 문자열도 이 필터만으로 걸러지지 않습니다.
 
+전달 위치는 같은 Kafka 레코드인지 확인할 때 사용합니다. 토픽·파티션·offset(그 토픽·파티션 안의 레코드 위치)을 함께 읽으며, 업무 키는 같은 환불을 찾는 데 사용합니다. 아래 문법은 첫 독해 뒤 필요할 때 확인합니다.
+
+<details>
+<summary>심화 참고 — Kafka metadata 문법과 복원 위치</summary>
+
 ```sql
 payload STRING,
 topic STRING METADATA FROM 'topic' VIRTUAL,
@@ -131,20 +187,17 @@ kafka_offset BIGINT METADATA FROM 'offset' VIRTUAL,
 kafka_ts TIMESTAMP_LTZ(3) METADATA FROM 'timestamp' VIRTUAL
 ```
 
-`METADATA FROM`으로 Kafka가 제공하는 전달 정보를 읽습니다. `VIRTUAL`은 이 컬럼을 Kafka 테이블의 쓰기 대상 스키마에서 제외한다는 뜻입니다. 아래 SELECT에서 골라 보내면 Bronze 일반 컬럼으로 보존됩니다. offset은 토픽·파티션과 함께 읽으며 전역 업무 순번으로 사용하지 않습니다.
+`METADATA FROM`으로 Kafka가 제공하는 전달 정보를 읽습니다. `VIRTUAL`은 이 컬럼을 Kafka 테이블의 쓰기 대상 스키마에서 제외한다는 뜻입니다. 2절 ③의 SELECT에서 골라 보내면 Bronze 일반 컬럼으로 보존됩니다. offset은 토픽·파티션과 함께 읽으며 전역 업무 순번으로 사용하지 않습니다.
 
 `earliest-offset`은 복원할 상태가 없을 때 보관된 가장 이른 위치에서 시작하는 설정입니다. checkpoint에서 복원할 때는 저장된 입력 위치를 사용합니다. 상태 없이 새 job을 earliest로 제출하는 것은 기존 상태의 복구와 다르며, 기존 Bronze에 과거 입력을 다시 append할 수 있습니다.
+
+</details>
 
 ### 삭제 사건과 tombstone을 구분하기
 
 다음 설명은 삭제 사건을 Debezium envelope로 보존하는 이 공통 예제의 전제입니다. 일반 Kafka 토픽에서는 tombstone 자체가 삭제 신호일 수 있으므로 같은 필터를 그대로 적용하지 않습니다.
 
-```sql
-INSERT INTO lake.bronze.cdc_events
-SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
-FROM kafka_events
-WHERE payload IS NOT NULL;
-```
+위 2절 ③에서 읽은 INSERT SELECT가 이 필터를 적용합니다.
 
 처리 흐름은 **Kafka source → null 필터·컬럼 선택 → Iceberg writer → 전체 checkpoint 완료 통지 → committer의 테이블 확정**입니다. source에서 원문과 전달 위치를 읽고, SELECT에서 남길 컬럼과 Flink 처리 시각을 선택합니다. writer가 파일을 준비한 것과 테이블 commit을 마친 것은 다른 단계이며, commit을 거쳐야 새 조회에서 읽을 수 있습니다. 각 경계의 차이는 다음 절에서 확인합니다.
 
@@ -159,15 +212,24 @@ WHERE payload IS NOT NULL;
 
 `kafka_ts`는 Kafka 레코드 시각이고 `ingested_at`은 SELECT의 `CURRENT_TIMESTAMP`로 채운 Flink 처리 시각입니다. 어느 쪽도 원천 DB 또는 Iceberg 테이블 commit 시각의 직접 증거는 아닙니다.
 
-### writer와 checkpoint는 언제 일하나요?
+### 파일 준비와 테이블 확정은 다릅니다
+
+들어오는 행을 파일에 계속 쓰고, 복구 지점을 준비할 때 열린 파일을 마무리하며 어떤 파일을 준비했는지 남깁니다. 전체 checkpoint 완료 통지를 받은 뒤 준비한 결과를 테이블 상태로 확정합니다. 이 확정을 commit이라고 부릅니다. Parquet는 읽는 데 필요한 footer(파일 끝의 메타데이터)까지 마무리해야 완성된 파일로 읽을 수 있습니다. 파일이 보이는 시점과 현재 테이블의 새 SELECT로 그 행을 읽는 시점을 나누어 봅니다.
+
+이벤트 한 건마다 파일 하나가 생기거나, checkpoint 전에는 모든 입력이 메모리에만 머문다고 이해하지 않습니다. 여러 행이 같은 파일에 들어갈 수 있고 내부 버퍼·업로드도 있습니다. 구현 이름은 이 흐름을 이해한 뒤 확인합니다.
+
+<details>
+<summary>심화 참고 — Iceberg writer와 checkpoint 구현</summary>
 
 레코드는 들어올 때 writer의 파일 쓰기 경로로 전달됩니다. checkpoint가 올 때까지 모든 입력을 메모리에만 모아두었다가 처음 쓰는 구조가 아닙니다. 다만 내부 버퍼·인코딩·업로드가 있으므로 레코드 한 건이 도착한 즉시 콘솔에 완성된 Parquet 오브젝트가 보인다고도 말할 수 없습니다.
 
 현재 코드가 선택하는 Iceberg 1.10 기본 sink 경로에서는 checkpoint barrier를 넘기기 전에 열린 파일을 마감하고 파일 결과를 committer로 보냅니다. committer는 아직 테이블에 확정하지 않은 파일의 참조를 checkpoint 상태에 남기고, 전체 checkpoint 완료 통지를 받은 뒤 미확정 결과의 테이블 commit을 진행합니다. 클래스 이름보다 **파일 준비·복구 상태 저장·테이블 확정이 다른 단계**라는 점을 이해합니다. [Writer 구현](https://raw.githubusercontent.com/apache/iceberg/apache-iceberg-1.10.0/flink/v1.20/flink/src/main/java/org/apache/iceberg/flink/sink/IcebergStreamWriter.java), [Committer 구현](https://raw.githubusercontent.com/apache/iceberg/apache-iceberg-1.10.0/flink/v1.20/flink/src/main/java/org/apache/iceberg/flink/sink/IcebergFilesCommitter.java).
 
+</details>
+
 ## 5. Iceberg는 어떤 파일을 읽을지 어떻게 정하나요?
 
-이 프로젝트는 Iceberg format v2를 사용합니다. 다음 순서로 테이블을 찾습니다.
+이 프로젝트는 Iceberg format v2를 사용합니다. 기본 SELECT는 **현재 snapshot**을 읽습니다. 아래의 “선택한 snapshot”은 이 기본 조회에서 현재 상태를 가리킵니다. 다음 순서로 테이블을 찾습니다.
 
 ```text
 Catalog의 현재 metadata 위치
@@ -191,7 +253,14 @@ snapshot은 테이블의 일관된 상태입니다. 매번 전체 데이터를 �
 | Iceberg commit | 테이블의 현재 metadata 참조와 snapshot 변경 | 특정 업무 키의 내용·최종 지표의 정확성 |
 | 같은 키의 새 SELECT | 이 조회에서 실제 행이 읽힘 | 원천 commit부터의 전체 지연·모든 재처리 보장 |
 
-checkpoint 성공 뒤에도 Iceberg commit은 실패할 수 있습니다. 복구 시에는 남은 pending 파일 참조와 snapshot summary의 job·operator·최대 commit checkpoint 정보를 대조해 같은 파일의 중복 commit을 피하도록 설계돼 있습니다. 상태·입력·관련 파일이 보존돼야 하며, 다른 offset으로 다시 발행된 업무 이벤트의 중복 제거와는 다릅니다. 빈 checkpoint나 미확정 결과의 처리 때문에 checkpoint 한 번마다 새 snapshot 하나가 생긴다고도 보장하지 않습니다. 두 ID를 일대일로 맞추지 않습니다. [Flink Writes](https://iceberg.apache.org/docs/1.10.0/flink-writes/).
+checkpoint 성공 뒤에도 Iceberg commit은 실패할 수 있습니다. checkpoint 성공 숫자만으로 이번 환불의 도착을 판단하지 않고, 해당 키로 새 SELECT를 실행해 확인합니다.
+
+<details>
+<summary>심화 참고 — commit 복구와 과거 snapshot</summary>
+
+명시적 과거 상태 조회(time travel)는 보존된 다른 snapshot을 선택하는 별도 사용법입니다. 기본 현재 조회와 구분합니다.
+
+pending은 아직 테이블에 확정하지 않은 결과를 뜻합니다. 복구 시에는 남은 pending 파일 참조와 snapshot summary의 job·operator·최대 commit checkpoint 정보를 대조해 같은 파일의 중복 commit을 피하도록 설계돼 있습니다. 상태·입력·관련 파일이 보존돼야 하며, 다른 offset으로 다시 발행된 업무 이벤트의 중복 제거와는 다릅니다. 빈 checkpoint나 미확정 결과의 처리 때문에 checkpoint 한 번마다 새 snapshot 하나가 생긴다고도 보장하지 않습니다. 두 ID를 일대일로 맞추지 않습니다. [Flink Writes](https://iceberg.apache.org/docs/1.10.0/flink-writes/).
 
 실패 시점에 따라 복구할 대상도 구분합니다.
 
@@ -203,6 +272,8 @@ checkpoint 성공 뒤에도 Iceberg commit은 실패할 수 있습니다. 복구
 아직 checkpoint에 담기지 않은 입력의 재처리와, 완료 checkpoint에 남은 pending 결과의 복구를 같은 상황으로 설명하지 않습니다.
 
 checkpoint·savepoint는 별도 `flink-state` Docker 볼륨에 있고, Iceberg data·metadata는 S3 호환 저장소에 있습니다. Catalog DB도 별도 볼륨입니다. 한 곳의 파일만 남아 있다고 전체 복구가 되는 것은 아닙니다. 이번 단일 맥미니 구성은 호스트·JobManager 전체 장애에 대한 HA나 원격 상태 백업을 제공하지 않습니다.
+
+</details>
 
 ## 6. raw 이력에서 MinIO와 테이블 조회까지 연결하기
 
@@ -268,7 +339,7 @@ job의 RUNNING 여부는 출발점입니다. 새 입력이 있는지, 처리와 
 
 ### 짧은 주기가 항상 좋은가요?
 
-checkpoint 간격이 짧으면 정상 상태에서 commit 기회를 자주 가질 수 있지만 파일 마감·metadata·commit 작업도 잦아집니다. 낮은 입력량에서는 작은 파일이 늘 수 있습니다. 길게 하면 빈도 비용을 줄일 여지가 있지만 조회 대기와 미확정 처리 범위가 커질 수 있습니다. 기본 10초는 학습 설정이며 지연 상한이 아닙니다.
+checkpoint 간격이 짧으면 정상 상태에서 commit 기회를 자주 가질 수 있지만 파일 마감·metadata·commit 작업도 잦아집니다. 낮은 입력량에서는 작은 파일이 늘 수 있습니다. 길게 하면 빈도 비용을 줄일 여지가 있지만 조회 대기와 미확정 처리 범위가 커질 수 있습니다. 이번 실습에서 설정한 10초는 학습 설정이며 지연 상한이 아닙니다.
 
 목표 파일 크기도 매 파일의 실제 크기를 보장하지 않습니다. writer 수나 partition을 늘리면 처리 여지가 생기는 동시에 파일·메모리·commit 비용이 달라집니다. 현재 예제는 원천 하나·토픽당 파티션 하나·parallelism 1이며 대규모 처리량이나 다중 파티션 순서를 검증한 구성이 아닙니다.
 

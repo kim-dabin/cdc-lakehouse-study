@@ -1,6 +1,13 @@
 # 3회차 공식 참고 문서
 
-확인일: 2026-10-24. 본편은 Flink·Iceberg의 정의와 선택 이유, 실제 적재·commit·조회, 운영 판단을 다룹니다. 아래 문서는 필요한 부분을 다시 읽기 위한 자료이며 모두 별도 조사·제출해야 하는 목록은 아닙니다.
+확인일: 2026-10-24. 공통 `orders`·`payments`·`refunds`로 Flink → Bronze 적재·지연, checkpoint·commit·조회를 확인하고 개인 설계로 연결합니다. Flink·Iceberg의 정의와 선택 이유, 내부 동작과 운영 판단의 근거를 모았습니다. 아래 문서는 필요한 부분을 다시 읽기 위한 자료이며 모두 별도 조사·제출해야 하는 목록은 아닙니다.
+
+## 제공된 공통 예제와 실행 경로
+
+- [원천 테이블 SQL](../../sql/01-source.sql): orders → payments → refunds의 PK/FK와 결제 100,000원 기준값.
+- [Flink 적재 SQL](../../flink/ingest.sql.template): 세 테이블의 Kafka raw value·전달 정보를 Bronze에 append하는 입력·출력 계약.
+- [개인 공통 실행 안내](../../docs/self-study.md) · [실행 진입점](../../scripts/self-study.sh): 저장소 루트에서 실행 계획과 환경 상태에 맞는 실행 방법을 확인합니다. 결제 100,000원 → 환불 20,000원 → 30,000원 정정 → 환불 철회 DELETE를 대조합니다.
+- [첫날 로드맵과 수업 순서](student-guide.md): 1–3회차 공통 수집·적재 뒤 개인 설계를 확정하고, 4–6회차에는 내 프로젝트의 Silver·Gold·수정/삭제·소급 정정으로 이어갑니다.
 
 ## 정의와 대안
 
@@ -46,5 +53,7 @@
 | 파일·snapshot·metadata 유지 관리 | [Iceberg Maintenance](https://iceberg.apache.org/docs/1.10.0/maintenance/) · [Flink 쓰기 주의](https://iceberg.apache.org/docs/1.10.0/flink-writes/#notes) | compaction·snapshot 만료·orphan 정리의 다른 목적과 복구 참조 |
 
 [관찰 SQL](metadata-inspection.sql)은 Spark 조회 A–D와 별도 Catalog PostgreSQL 조회 E를 구분합니다. MinIO 콘솔에서는 Catalog pointer → 현재 JSON → manifest 관계 → data 객체를 먼저 따라가고 SQL로 교차 확인합니다. 가장 최신 이름·시각만으로 current를 고르지 않습니다. files.record_count는 파일 전체 행 수이고, 여러 이벤트가 같은 _file에 들어갈 수 있습니다.
+
+현재 수업 콘솔은 metadata JSON Preview가 되지 않습니다. 강사가 사전 Download한 로컬 JSON을 열며, Download 당시 `metadata_location`·객체 경로·Download 시각을 함께 대조합니다. 이후 pointer가 달라졌다면 준비본의 시점과 현재 SQL 조회 시점을 구분합니다.
 
 checkpoint·최근 snapshot·같은 키 SELECT는 서로 다른 순차 관측입니다. 원천 commit 시각을 확보하지 않은 wait 관찰을 전체 지연이나 고정 SLA로 표현하지 않습니다. 지표의 설명이 현재 helper에 모든 관측·알람이 구현됐다는 뜻도 아닙니다. 파일·metadata를 정리할 때는 진행 중 pending 파일과 Flink 복구에 필요한 참조를 함께 고려하며 보존 일수를 임의로 처방하지 않습니다.

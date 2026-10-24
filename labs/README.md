@@ -1,15 +1,15 @@
 # 8회 실습 진행안
 
-Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명하는 과정이 아니다. 이미 배운 도구로 개인 프로젝트를 설계하고, 새로 다루는 CDC·Flink·Iceberg·dbt를 연결한다. 수업당 2시간을 기본으로 하되, 3회차 확장 자료는 휴식 15분을 포함한 본편 약 215분과 선택 부록으로 구성한다. 개인 구현과 기록은 회차 사이에 진행한다. **3회차부터 수업은 파이프라인 설계 중심으로 진행한다.** 요구사항과 대안을 먼저 비교하고, 짧은 강사 실험은 그 선택을 이해하는 데 사용한다. 학생은 수업 초반부터 자기 설계에 판단을 남긴다.
+Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명하는 과정이 아니다. 이미 배운 도구로 개인 프로젝트를 설계하고, 새로 다루는 CDC·Flink·Iceberg·dbt를 연결한다. 1–3회차에는 제공된 `orders`·`payments`·`refunds` 공통 예제로 수집·적재를 익힌다. 강사 공유 화면에서 결과를 예측하고 SQL을 작성·읽으며, 개인 Docker 환경에서는 같은 예제를 실행한다. 3회차 말 개인 설계를 확정한 뒤 4–6회차부터 각자의 프로젝트를 구현한다. 요구사항·선택 이유·운영 증거를 함께 다루며 개인 구현과 기록은 회차 사이에 이어간다.
 
 | 회차 | 수업에서 설계·검토할 것 | 학생 산출물 |
 |---|---|---|
-| 1 | OT·CDC/Iceberg 개념·아키텍처·환경 확인, 공통 환불 c/u/d 대조 | 공통 예제 SQL·이벤트 사전 예측, 원천/Kafka/Bronze 관찰 기록 |
-| 2 | 공통 예제의 Debezium 초기 스냅샷/WAL, Kafka key·before/after/op/LSN | 공통 이벤트 표본과 수집 설정·동작 기록 |
-| 3 | Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정: 정의·대안·writer/checkpoint/commit·MinIO·운영 | 개인 도메인·2~3테이블·키/순서·이벤트/삭제 정책·토픽·Bronze 정보·후속 조인 키 |
-| 4 | 현재 상태의 키·최신 버전·삭제·재전달 규칙 설계, Spark MERGE로 확인 | 개인 Silver 모델과 변경·중복 검증 |
-| 5 | 지표·모델 의존성·검증 조건 설계, dbt로 확인 | 개인 Gold 모델, 기대값을 확인하는 테스트 |
-| 6 | 전체 재계산 기준선과 증분 처리 범위 비교, 과거 기간 정정 | 증분 설계·재처리 SQL·전체 계산 결과 대조 |
+| 1 | 개념·환경·아키텍처, 공통 orders·payments·refunds의 전체 구조 파악 | 세 원천 테이블의 관계와 공통 예제 SQL·이벤트 예측 |
+| 2 | 공통 예제 PostgreSQL → Debezium → Kafka 수집, 초기 snapshot/WAL·key·before/after/op/LSN | 수집 설정과 이벤트·Bronze·파일 대조 |
+| 3 | 공통 예제 Flink → Bronze 적재·지연 측정, c/u/d·checkpoint·commit·MinIO 확인 후 개인 설계 확정 | 개인 도메인·2~3테이블·키/순서·변경/삭제 정책·토픽·Bronze 정보·후속 조인 키 |
+| 4 | 내 프로젝트의 현재 상태·중복 제거·최신 버전·삭제 규칙, Spark Silver MERGE | 개인 Silver 모델과 변경·중복 검증 |
+| 5 | 내 프로젝트의 지표·모델 의존성·검증 조건, dbt Gold와 테스트 | 개인 Gold 모델과 기대값 검증 |
+| 6 | 내 프로젝트의 수정·삭제·소급 정정, 재처리·증분 범위 | 과거 정정·재처리 SQL과 전체 계산 결과 대조 |
 | 7 | Iceberg 작은 파일·rewrite_data_files·파티션·쿼리 튜닝 | 같은 조건에서 파일·쿼리 지표의 개선 전후 비교 |
 | 8 | Airflow 연동·장애 복구 점검·최종 리뷰·실행 문서 정리 | 재현 가능한 코드와 검증·복구 기록 |
 
@@ -17,43 +17,43 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 
 ## 1–3회차: 공통 예제로 수집을 익힌 뒤 개인 설계 확정
 
-### 1회차 — 예측과 관찰
+### 1회차 — 개념·환경과 공통 예제 전체 구조
 
-[1회차 가이드](session01/student-guide.md)의 120분 흐름을 따른다. 실행은 강사가 맥미니에서 수행하고 학생은 로컬 파일을 작성한다.
+[1회차 가이드](session01/student-guide.md)를 따른다. 실행은 강사가 맥미니에서 수행하고 학생은 공통 예제의 구조와 변경을 읽는다.
 
 1. CDC의 선택 이유와 운영 비용, 아키텍처 세 관점의 역할을 정리한다.
-2. 공통 refunds의 20000 입력 → 30000 정정 → 삭제를 예측하고 원천 확인 SELECT를 작성한다.
-3. 강사 시연에서 같은 PK의 op·before/after와 Kafka·Bronze 수집 위치·copies를 대조한다.
-4. DELETE 이후 원천 0행과 Bronze c/u/d 이력, tombstone 제외, 지연 관찰 값의 의미를 확인한다.
+2. `orders(order_id)` → `payments(payment_id, order_id)` → `refunds(refund_id, payment_id)`의 관계와 전체 수집·분석 흐름을 파악한다.
+3. 결제 100,000원에 환불 20,000원 입력 → 30,000원 정정 → 환불 행 삭제를 예측하고 원천 확인 SELECT를 작성한다. 이 예제의 삭제는 환불 철회를 뜻한다.
+4. 시연에서 다룬 변경을 정리하고, 같은 키의 Kafka·Bronze 이력과 실제 파일 대조는 이어지는 수집·적재 수업에서 확인한다.
 5. 수업 후 개인 환경에서 공통 예제를 실행하고 SQL 파일과 submission.md로 복습 결과를 정리한다. 개인 DDL·DML은 이번 과제가 아니다.
 
 ### 2회차 — 수집 설정과 이벤트 해석
 
-1. 공통 예제로 PostgreSQL publication·replica identity, Debezium snapshot·WAL, Kafka 토픽·key를 확인한다.
+1. 제공된 세 테이블의 PostgreSQL publication·replica identity, Debezium snapshot·WAL, Kafka 토픽·key를 확인한다.
 2. 같은 키의 이벤트·Bronze·파일을 대조하고 상태 표시와 실제 데이터 증거를 구분한다.
 3. 독립 파서로 c/u/d·tombstone을 해석하고 어느 구간을 먼저 조사할지 판단한다.
 
 ### 3회차 — Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정
 
-[3회차 가이드](session03/student-guide.md)와 [설계 학습지](session03/design-worksheet.md)를 사용한다. **본편 약 215분(휴식 10분 + 5분 포함)**이며 정의·내부 동작·운영을 설명한 뒤 개인 설계 30분과 리뷰 12분을 진행한다. 심화 부록은 선택이다.
+[3회차 가이드](session03/student-guide.md)와 [설계 학습지](session03/design-worksheet.md)를 사용한다. 공통 예제를 통해 Flink·Iceberg의 정의·선택 이유·내부 동작·운영을 연결한 뒤 개인 설계 30분과 리뷰 12분을 진행한다.
 
 1. 사용자·변경·재처리 요구와 두 지연 목표를 정하고, Flink 처리 엔진·Iceberg 테이블 형식·저장소·Catalog·Spark의 역할을 구분한다.
 2. 배치·Spark Structured Streaming·Connect sink를 비교해 선택 이유와 비용을 설명한다. raw 입력·메타데이터·필터·append를 읽고 writer → checkpoint 상태 → 테이블 commit의 내부 단계를 연결한다.
-3. 원천/Bronze 이력, **MinIO 필수 10분**, commit/조회 경계를 관찰한다. Catalog의 현재 참조에서 JSON·manifest·data를 따라가고 Spark snapshots/files/metadata 이력/같은 키 SELECT로 교차 확인한다. 운영 지표와 장애 사례에서는 다음 증거를 고른다.
-4. 개인 도메인·원천 2~3개 테이블의 한 행·PK/FK·시간/순서·이벤트 유형·삭제 정책, 토픽·Bronze 보존 정보와 후속 조인·집계 키를 확정한다. 실제 DDL 구현은 필수가 아니다. 대표 두 사례 리뷰 8분과 전원 자가 점검 4분 뒤 후속 Silver 구현에 연결한다.
+3. 공통 환불의 c/u/d append, checkpoint·commit과 같은 키 조회를 직접 대조하고 지연의 시작·끝을 구분해 측정값을 읽는다. **MinIO 관찰은 수업에 포함**한다. Catalog의 현재 참조에서 JSON·manifest·data를 따라가고 Spark snapshots/files/metadata 이력/같은 키 SELECT로 교차 확인한다. 운영 지표와 장애 사례에서는 다음 증거를 고른다.
+4. 수집·적재 흐름을 확인한 뒤 개인 도메인·원천 2~3개 테이블의 한 행·PK/FK·시간/순서·이벤트 유형·삭제 정책, 토픽·Bronze 보존 정보와 후속 조인·집계 키를 확정한다. 실제 DDL 구현은 필수가 아니다. 대표 설계 리뷰와 전원 자가 점검을 거쳐 내 프로젝트의 후속 구현에 연결한다.
 
 개인 공통 동작은 [전체 실행 안내](../docs/self-study.md)로 확인한다. 이미 준비된 환경에 무조건 새 job을 제출하지 않고 안내의 상태별 실행 방식을 따른다. 수업 중 설치나 긴 명령 실행, 별도 제출 양식 작성을 추가하지 않는다.
 
-## 4–5회차: 빨리 도착해도 숫자가 틀리면 안 된다
+## 4–6회차: 내 프로젝트의 현재 상태와 분석 마트 구현
 
-키·순서·삭제 처리와 지표 정의를 먼저 설계하고, 필요한 예제를 짧게 실행해 선택한 규칙을 확인한다. 개인 모델 구현은 회차 사이에 이어간다.
+3회차에 확정한 각자의 도메인으로 키·순서·삭제 처리와 지표 정의를 구현한다. 공통 주문 예제는 동작을 비교할 기준이며 개인 프로젝트 주제를 통일하지 않는다. 4회차에는 Spark Silver 중복 제거·MERGE, 5회차에는 dbt Gold·테스트, 6회차에는 수정·삭제·소급 정정과 재처리 범위를 다룬다. 개인 모델 구현은 회차 사이에 이어간다.
 
 1. `scripts/pipeline.py`의 순서 판별과 MERGE 조건을 읽고 삭제 표시를 남기는 이유를 설명한다.
 2. 입력별 기대값과 확인 조건을 정한 뒤 `scripts/verify.sh` 등 필요한 실험으로 실제 마트와 비교한다.
 3. 주문 하나에 결제와 환불이 각각 여러 건 존재하도록 데이터를 추가한다. JOIN으로 금액이 부풀지 않는지 확인한다.
 4. 개인 지표별 집계 단위, 기준 시각, 취소·환불 처리 기준을 문서화하고 dbt 테스트를 추가한다.
 
-## 6회차: 증분 처리는 재처리 범위 설계다
+### 6회차 — 수정·삭제·소급 정정의 재처리 범위
 
 참고 코드는 전체 Bronze를 읽고 Gold를 재생성한다. 다음 조건을 만족하는 증분 버전을 각자 구현하고 기준 구현과 결과를 대조한다.
 
@@ -77,7 +77,7 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 
 ## 회차별 상세 자료
 
-- [1회차: CDC 레이크하우스 이해와 공통 예제 수집 확인](session01/README.md) — 120분 흐름, 공통 예측 SQL·수집 대조 복습 양식, 아키텍처 세 장과 개인 환경 실행 안내.
+- [1회차: CDC 레이크하우스 이해와 공통 예제 수집 확인](session01/README.md) — 개념·환경과 공통 예제 전체 구조, 예측 SQL·복습 양식과 아키텍처.
 
 - [2회차: PostgreSQL CDC 수집과 변경 이벤트 검증](session02/README.md) — Bronze 세 이력·실제 Parquet, 수집 설정, 독립 Python 파서와 구간별 진단.
 

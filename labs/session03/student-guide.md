@@ -75,11 +75,13 @@
 
 ### Flink — 계속 들어오는 데이터를 처리하는 엔진
 
-Flink는 들어오는 레코드를 source → 연산 → sink 흐름으로 처리하고, 실패했을 때 입력 위치와 처리 상태를 복원해 이어갈 수 있게 하는 분산 처리 엔진입니다. 이 프로젝트에서 PostgreSQL의 변경을 읽는 것은 Debezium이고, Flink는 Kafka를 읽습니다.
+**Flink는 계속 들어오는 데이터를 처리하고, 중단된 작업을 복원하는 분산 실행 엔진입니다.** Kafka에 이벤트가 도착해도 Iceberg 테이블에 저절로 적재되지는 않습니다. 이벤트를 계속 읽고, 저장할 값을 골라 파일과 테이블로 만드는 실행 주체가 필요합니다. 이번 프로젝트에서는 Flink가 그 역할을 맡습니다.
 
-Flink SQL의 지속 INSERT는 결과를 한 번 출력하고 끝나는 SELECT와 다릅니다. 제출된 job이 계속 입력을 받아 저장합니다. JobManager는 작업과 checkpoint 등을 조정하고 TaskManager는 실제 연산을 실행합니다. SQL의 논리 단계마다 별도 서버가 한 대씩 있다는 뜻은 아닙니다.
+역할을 나누면 Debezium은 PostgreSQL의 변경을 이벤트로 만들고, Kafka는 이벤트를 보관·전달합니다. Flink는 Kafka를 입력으로 읽어 Iceberg Bronze 적재를 실행하고, Iceberg는 파일을 일관된 테이블 상태로 관리합니다. 현재 Flink SQL은 Kafka value 원문과 전달 정보를 append합니다. tombstone을 제외하는 것은 Flink의 자동 동작이 아니라 우리가 작성한 `WHERE payload IS NOT NULL` 조건입니다. 업무 집계·window·join이나 업무 키별 중복 제거를 수행하지 않으며, 현재 상태를 만드는 책임은 후속 Silver에 있습니다.
 
-이 예제에는 업무 집계나 window·join이 없습니다. 그래도 어디까지 읽었고 어떤 파일을 아직 확정하지 않았는지를 복구할 상태가 필요합니다. “상태”를 사용자별 누적 합계만으로 생각하지 않습니다. [공식 개념](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/overview/), [실행 구조](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/flink-architecture/).
+Flink SQL의 지속 INSERT는 제출한 job이 계속 새 입력을 처리합니다. JobManager는 실행과 checkpoint를 조정하고 TaskManager는 실제 task를 실행합니다. source → 연산 → sink는 논리 흐름이며 단계마다 별도 서버가 있다는 뜻은 아닙니다. 집계가 없는 이 job에도 **어디까지 읽었는지, 어떤 파일 작업을 아직 테이블에 확정하지 않았는지**를 복구할 상태가 필요합니다. checkpoint와 Iceberg commit이 어떻게 연결되는지는 뒤에서 구분해 봅니다.
+
+이 구성을 사용하면 연속 처리와 복구 상태를 함께 다룰 수 있지만, 상시 실행하는 엔진·상태 저장·connector·운영 지표를 관리해야 합니다. Flink가 유일한 선택은 아닙니다. 단순 raw append에는 Connect sink나 기존 Spark를 활용하는 구성이 더 단순할 수 있으며, 다음 절에서 요구 지연과 운영 부담을 기준으로 비교합니다. [공식 개념](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/overview/), [실행 구조](https://nightlies.apache.org/flink/flink-docs-release-1.20/docs/concepts/flink-architecture/).
 
 ### Iceberg — 파일을 일관된 테이블 상태로 관리하는 형식
 
@@ -110,6 +112,8 @@ Parquet는 실제 행과 컬럼을 파일에 담는 형식입니다. Iceberg는 
 Kafka 없이 직접 CDC 적재를 맡는 구조도 도구의 source/sink 지원과 재처리 요구에 따라 검토할 수 있습니다. 그때는 브로커의 보관·소비자 분리가 없어져도 괜찮은지, 원천 로그와 복구 위치를 누가 관리하는지 확인해야 합니다.
 
 이번 공통 구현은 **원문과 전달 위치를 남기고, 연속 처리의 복구 상태와 테이블 commit을 분리해 배우기 위해** Flink와 Iceberg를 사용합니다. 단순 raw append만 필요하다면 Connect sink나 기존 Spark를 활용하는 구성이 더 단순할 수 있습니다. 여기서 대안의 성능·비용 우위를 측정한 것은 아닙니다. Spark Structured Streaming도 스트림을 처리하며, 이 Iceberg 통합은 micro-batch 쓰기를 지원합니다. Spark의 experimental continuous 모드를 이 Iceberg sink에서도 사용할 수 있다고 혼동하지 않습니다.
+
+지연을 줄이려고 commit 기회를 자주 만들면 작은 파일과 snapshot·metadata 관리 부담이 늘 수 있습니다. checkpoint 간격이 짧다고 매번 새 파일·snapshot이 반드시 생기거나 그 간격 안에 조회된다고 보장하지는 않습니다. 실제 Parquet·Iceberg metadata 파일은 MinIO에 저장되고, 별도 Catalog PostgreSQL은 현재 metadata 위치를 관리합니다. metadata 파일 자체를 Catalog DB에 쌓는 구성은 아닙니다.
 
 학습지에는 선택 이유 하나, 비교한 대안 하나, 감수할 부담 하나만 먼저 적습니다. [Spark Structured Streaming](https://spark.apache.org/docs/3.5.6/structured-streaming-programming-guide.html), [Iceberg streaming 쓰기](https://iceberg.apache.org/docs/1.10.0/spark-structured-streaming/), [Connect sink](https://iceberg.apache.org/docs/1.10.0/kafka-connect/).
 
@@ -142,9 +146,16 @@ FROM kafka_events
 WHERE payload IS NOT NULL;
 ```
 
-- `op=d`: 삭제 전 값을 담은 JSON 본문이 있으므로 Bronze에 남습니다. `after=null`이 value 전체 null은 아닙니다.
-- Kafka tombstone: value 전체가 null이므로 이 SQL에서 제외합니다.
-- 같은 업무 키의 c/u/d: 별도 이력 행으로 append합니다. 업무 키 upsert·현재 상태 계산·업무 중복 제거는 하지 않습니다.
+처리 흐름은 **Kafka source → null 필터·컬럼 선택 → Iceberg writer → 전체 checkpoint 완료 통지 → committer의 테이블 확정**입니다. source에서 원문과 전달 위치를 읽고, SELECT에서 남길 컬럼과 Flink 처리 시각을 선택합니다. writer가 파일을 준비한 것과 테이블 commit을 마친 것은 다른 단계이며, commit을 거쳐야 새 조회에서 읽을 수 있습니다. 각 경계의 차이는 다음 절에서 확인합니다.
+
+| Kafka 입력 | 필터·SELECT의 처리 | Bronze에 남는 것 |
+|---|---|---|
+| 환불 생성 `op=c` | 본문과 전달 정보를 선택 | 생성 이력 한 행 |
+| 환불 정정 `op=u` | 본문과 전달 정보를 선택 | 수정 이력 한 행 |
+| 환불 철회 `op=d` | 본문이 있으므로 통과 | 삭제 이력 한 행 |
+| tombstone | value 전체가 null이므로 제외 | 추가하지 않음 |
+
+`op=d`의 `after=null`은 value 전체 null과 다릅니다. 같은 업무 키의 c/u/d는 각각 이력 행으로 append하며, 기존 Bronze 행을 수정·삭제하지 않습니다. 업무 키 upsert·현재 상태 계산·업무 중복 제거도 하지 않습니다. 원천 FK 제약을 Bronze에 자동으로 강제하거나 여러 테이블 사이의 전역 순서를 보장하는 처리도 아닙니다.
 
 `kafka_ts`는 Kafka 레코드 시각이고 `ingested_at`은 SELECT의 `CURRENT_TIMESTAMP`로 채운 Flink 처리 시각입니다. 어느 쪽도 원천 DB 또는 Iceberg 테이블 commit 시각의 직접 증거는 아닙니다.
 
@@ -181,6 +192,15 @@ snapshot은 테이블의 일관된 상태입니다. 매번 전체 데이터를 �
 | 같은 키의 새 SELECT | 이 조회에서 실제 행이 읽힘 | 원천 commit부터의 전체 지연·모든 재처리 보장 |
 
 checkpoint 성공 뒤에도 Iceberg commit은 실패할 수 있습니다. 복구 시에는 남은 pending 파일 참조와 snapshot summary의 job·operator·최대 commit checkpoint 정보를 대조해 같은 파일의 중복 commit을 피하도록 설계돼 있습니다. 상태·입력·관련 파일이 보존돼야 하며, 다른 offset으로 다시 발행된 업무 이벤트의 중복 제거와는 다릅니다. 빈 checkpoint나 미확정 결과의 처리 때문에 checkpoint 한 번마다 새 snapshot 하나가 생긴다고도 보장하지 않습니다. 두 ID를 일대일로 맞추지 않습니다. [Flink Writes](https://iceberg.apache.org/docs/1.10.0/flink-writes/).
+
+실패 시점에 따라 복구할 대상도 구분합니다.
+
+| 실패 시점 | 복구의 출발점 |
+|---|---|
+| 최근 성공 checkpoint에 포함되지 않은 입력을 처리하던 중 | 마지막 성공 checkpoint에 저장한 입력 위치와 상태부터 재처리합니다. 작성만 하고 commit하지 않은 객체는 테이블에 포함되지 않으며, 물리 객체가 자동으로 사라진다고 단정하지 않습니다. |
+| 성공 checkpoint에 pending 파일 참조는 남았지만 commit 결과가 불확실함 | 보존된 상태와 snapshot의 commit 기록을 대조해 이미 확정한 범위와 아직 처리할 결과를 구분합니다. |
+
+아직 checkpoint에 담기지 않은 입력의 재처리와, 완료 checkpoint에 남은 pending 결과의 복구를 같은 상황으로 설명하지 않습니다.
 
 checkpoint·savepoint는 별도 `flink-state` Docker 볼륨에 있고, Iceberg data·metadata는 S3 호환 저장소에 있습니다. Catalog DB도 별도 볼륨입니다. 한 곳의 파일만 남아 있다고 전체 복구가 되는 것은 아닙니다. 이번 단일 맥미니 구성은 호스트·JobManager 전체 장애에 대한 HA나 원격 상태 백업을 제공하지 않습니다.
 

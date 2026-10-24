@@ -1,0 +1,269 @@
+meta:
+  title: 공통 예제 테이블 관계와 삭제 규칙
+  description: 원천 PostgreSQL의 실제 FK와 Bronze 변경 이력의 차이
+  theme: tech-blue
+  profile: engineering-review
+  source: generated
+  layout: horizontal
+  canvas: 1600x900
+  font:
+    primary: Arial
+    cjk: Apple SD Gothic Neo, Arial
+    formula: Arial
+nodes:
+- id: title
+  label: 공통 예제 — 주문·결제·환불은 어떻게 연결될까?
+  type: text
+  bounds:
+    x: 48
+    y: 28
+    width: 1504
+    height: 64
+  style:
+    fontSize: 36
+    align: left
+    fontColor: '#172B46'
+    fontStyle: 1
+- id: subtitle
+  label: PostgreSQL 원천 테이블 관계도 · 실제 DDL과 맥미니 FK 설정 기준
+  type: text
+  bounds:
+    x: 48
+    y: 104
+    width: 1504
+    height: 40
+  style:
+    fontSize: 22
+    align: left
+    fontColor: '#526984'
+- id: orders
+  label: 'orders · 주문
+
+
+    PK   order_id : text
+
+    ordered_at : timestamptz
+
+    status : text'
+  type: process
+  bounds:
+    x: 48
+    y: 192
+    width: 416
+    height: 288
+  style:
+    fontSize: 24
+    align: left
+    fontColor: '#172B46'
+    fillColor: '#F1F6FE'
+    strokeColor: '#AFCAE9'
+    strokeWidth: 2
+    spacingLeft: 24
+    spacingTop: 16
+    verticalAlign: middle
+- id: payments
+  label: 'payments · 결제
+
+
+    PK   payment_id : text
+
+    FK   order_id : text
+
+    amount : bigint
+
+    status : text'
+  type: process
+  bounds:
+    x: 592
+    y: 192
+    width: 416
+    height: 288
+  style:
+    fontSize: 24
+    align: left
+    fontColor: '#172B46'
+    fillColor: '#E8F2FF'
+    strokeColor: '#9ABEEA'
+    strokeWidth: 2
+    spacingLeft: 24
+    spacingTop: 16
+    verticalAlign: middle
+- id: refunds
+  label: 'refunds · 환불
+
+
+    PK   refund_id : text
+
+    FK   payment_id : text
+
+    amount : bigint
+
+    status : text'
+  type: process
+  bounds:
+    x: 1136
+    y: 192
+    width: 416
+    height: 288
+  style:
+    fontSize: 24
+    align: left
+    fontColor: '#172B46'
+    fillColor: '#E7F6F1'
+    strokeColor: '#9FCDBF'
+    strokeWidth: 2
+    spacingLeft: 24
+    spacingTop: 16
+    verticalAlign: middle
+- id: rel-note
+  label: '1 : 0..N = 부모 한 건에 자식은 0건 이상 · 자식 한 건은 반드시 부모 한 건을 참조'
+  type: text
+  bounds:
+    x: 48
+    y: 500
+    width: 1504
+    height: 40
+  style:
+    fontSize: 22
+    align: left
+    fontColor: '#172B46'
+- id: constraints
+  label: PK = 기본 키 · FK = 외래 키 · 모든 컬럼 NOT NULL · amount ≥ 0 · FK 컬럼은 중복 허용
+  type: text
+  bounds:
+    x: 48
+    y: 548
+    width: 1504
+    height: 40
+  style:
+    fontSize: 21
+    align: left
+    fontColor: '#526984'
+- id: delete-title
+  label: '현재 삭제 규칙: 두 FK 모두 ON DELETE NO ACTION'
+  type: text
+  bounds:
+    x: 48
+    y: 612
+    width: 1504
+    height: 48
+  style:
+    fontSize: 26
+    align: left
+    fontColor: '#172B46'
+    fontStyle: 1
+- id: order-delete
+  label: '주문 삭제
+
+    연결된 결제가 있으면 거부'
+  type: process
+  bounds:
+    x: 48
+    y: 668
+    width: 416
+    height: 96
+  style:
+    fontSize: 23
+    align: left
+    fontColor: '#172B46'
+    fillColor: '#FFF5E8'
+    strokeColor: '#E7CFAD'
+    spacingLeft: 20
+- id: payment-delete
+  label: '결제 삭제
+
+    연결된 환불이 있으면 거부'
+  type: process
+  bounds:
+    x: 592
+    y: 668
+    width: 416
+    height: 96
+  style:
+    fontSize: 23
+    align: left
+    fontColor: '#172B46'
+    fillColor: '#FFF5E8'
+    strokeColor: '#E7CFAD'
+    spacingLeft: 20
+- id: refund-delete
+  label: '환불 삭제
+
+    가능 · 결제와 주문은 유지'
+  type: process
+  bounds:
+    x: 1136
+    y: 668
+    width: 416
+    height: 96
+  style:
+    fontSize: 23
+    align: left
+    fontColor: '#172B46'
+    fillColor: '#FFF5E8'
+    strokeColor: '#E7CFAD'
+    spacingLeft: 20
+- id: bronze-note
+  label: 성공·커밋된 삭제 → Bronze에 d 이벤트 추가 · 기존 c/u 이력 유지 · null tombstone은 제외
+  type: text
+  bounds:
+    x: 48
+    y: 794
+    width: 1504
+    height: 40
+  style:
+    fontSize: 23
+    align: left
+    fontColor: '#172B46'
+    fontStyle: 1
+- id: footnote
+  label: 관계선은 FK 관계를 뜻합니다. CDC 흐름도가 아닙니다. 원천 FK 제약은 Bronze에 자동 복제되지 않습니다.
+  type: text
+  bounds:
+    x: 48
+    y: 840
+    width: 1504
+    height: 40
+  style:
+    fontSize: 20
+    align: left
+    fontColor: '#526984'
+edges:
+- from: orders
+  to: payments
+  type: bidirectional
+  label: '1 : 0..N'
+  labelPosition: center
+  labelOffset:
+    x: 0
+    y: -32
+  style:
+    startArrow: none
+    endArrow: none
+    strokeColor: '#5C738F'
+    strokeWidth: 2.5
+    fontSize: 23
+    fontColor: '#172B46'
+    exitX: 1
+    exitY: 0.5
+    entryX: 0
+    entryY: 0.5
+- from: payments
+  to: refunds
+  type: bidirectional
+  label: '1 : 0..N'
+  labelPosition: center
+  labelOffset:
+    x: 0
+    y: -32
+  style:
+    startArrow: none
+    endArrow: none
+    strokeColor: '#5C738F'
+    strokeWidth: 2.5
+    fontSize: 23
+    fontColor: '#172B46'
+    exitX: 1
+    exitY: 0.5
+    entryX: 0
+    entryY: 0.5

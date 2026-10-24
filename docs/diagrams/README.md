@@ -1,4 +1,4 @@
-# 프로젝트 아키텍처 — 세 가지 관점
+# 프로젝트 아키텍처와 공통 예제 관계도
 
 같은 시스템을 데이터 흐름, 저장·메타데이터 관계, 실행 환경으로 나눠 설명한다. PNG는 강의 화면에 사용하고 `.drawio`는 draw.io Desktop 또는 diagrams.net에서 도형·연결선·텍스트를 수정하는 원본으로 사용한다.
 
@@ -31,6 +31,14 @@ Flink와 Spark가 같은 JDBC Catalog와 MinIO를 사용한다. Catalog는 테�
 한 대의 맥미니에서 macOS 호스트 영역과 Lima Linux VM 영역을 구분했다. 호스트에는 실습 체크아웃과 Docker CLI가 있고, 컨테이너와 전용 볼륨은 VM에서 사용한다. 호스트 코드 경로는 VM 안에 동일한 경로로 마운트한다.
 
 강사가 SSH로 맥미니에 접속해 화면을 공유한다. 1회차 학생은 자기 노트북에서 공통 예제 SQL·이벤트 예측과 수집 대조 기록을 작성한다. 기존 그림의 학생 코드·설계 작성 표기는 전체 스터디의 역할이며, 개인 도메인·테이블 설계 확정은 3회차에 진행한다. Airflow는 이후 회차의 주기 실행에 사용하며, 1회차에서는 Bronze까지 수집을 대조한다. UI는 SSH 로컬 터널과 맥미니 loopback의 Lima 포트 전달 경로로 조회한다. minio-init처럼 초기화만 하는 일회성 컨테이너는 주요 배치도에서 생략했다.
+
+## 04. 공통 예제 테이블 관계와 삭제 규칙
+
+![공통 예제 테이블 관계](04-common-example-erd.png)
+
+[편집 원본](04-common-example-erd.drawio) · [FK와 CDC 삭제 동작 설명](../common-example-relationships.md)
+
+원천 PostgreSQL의 `orders` → `payments` → `refunds` 관계다. 각 관계는 부모 1건에 자식 0건 이상을 허용한다. 관계선은 FK 관계이며 CDC 데이터 흐름을 뜻하지 않는다. 현재 두 FK는 `ON DELETE NO ACTION`이므로 참조하는 자식이 있는 부모 삭제는 거부된다. 원천에서 성공·커밋된 삭제도 현재 Bronze에서는 `d` 이벤트 추가로 보관하며 이전 이력은 유지한다.
 
 ## 그림과 편집 원본
 

@@ -1,0 +1,26 @@
+# Optional learner UI. Run after the main environment is ready:
+# ./scripts/lab.sh -f compose.yaml -f compose.observers.yaml up -d --no-deps kafka-ui
+services:
+  kafka-ui:
+    image: kafbat/kafka-ui:v1.5.0
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: -Xms64m -Xmx256m
+      KAFKA_CLUSTERS_0_NAME: cdc-study
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_READONLY: "true"
+      DYNAMIC_CONFIG_ENABLED: "false"
+      MCP_ENABLED: "false"
+      GITHUB_RELEASE_INFO_ENABLED: "false"
+    ports:
+      - "127.0.0.1:28082:8080"
+    mem_limit: 512m
+    cpus: "0.50"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      kafka:
+        condition: service_healthy

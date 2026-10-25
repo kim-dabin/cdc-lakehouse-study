@@ -107,6 +107,15 @@ WHERE table_namespace='bronze' AND table_name='cdc_events';"
 
 다운로드 시각과 파일명을 함께 남깁니다. 그 뒤 Catalog 포인터가 바뀌어도 내려받은 JSON은 **조회한 시점의 참조를 확인하는 기록**입니다. 파일명이 같다고 다른 시점의 current라고 계속 부르지 않습니다. 콘솔의 ETag도 보편적인 파일 내용 해시라고 가정하지 않습니다.
 
+JSON이 한 줄로 길게 보여 읽기 어렵다면 제공된 읽기 전용 도구로 같은 필드를 확인해도 됩니다. `내가_받은_파일.metadata.json` 부분은 **자신이 방금 내려받은 파일명**으로 바꿉니다. 다운로드 위치가 다르면 폴더 경로도 바꿉니다. 원본 파일을 수정하거나 서비스에 접속하는 도구는 아닙니다.
+
+```bash
+METADATA_FILE="$HOME/Downloads/내가_받은_파일.metadata.json"
+python3 labs/session03/follow-along/inspect_metadata.py "$METADATA_FILE"
+```
+
+`current-snapshot-id`와 `matching-snapshot-id`가 같고 그 항목의 `manifest-list`가 출력되는지 봅니다. [도구 코드](inspect_metadata.py)는 원본 JSON에서 같은 ID의 항목을 고르는 짧은 프로그램입니다. 파일을 못 찾으면 다운로드 폴더와 파일명을 먼저 확인합니다.
+
 **멈춤 기준:** Catalog 주소의 파일명과 다운로드 원본이 같고, current-snapshot-id에서 같은 snapshot의 manifest-list로 이어지면 계속합니다.
 
 ## 11. 같은 환불의 `_file`과 MinIO Parquet 연결하기

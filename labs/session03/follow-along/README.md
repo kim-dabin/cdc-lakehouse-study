@@ -6,11 +6,12 @@
 
 ## 1. 저장소와 실행 환경 준비
 
-Git, Python 3.9 이상, Docker Engine과 Compose v2가 필요합니다. 검증 기준은 Linux ARM64 Docker 환경입니다. 다른 CPU·운영체제의 전체 설치는 별도 확인이 필요합니다. Windows에서 Bash 명령을 실행한다면 WSL 터미널을 사용하고 Docker 연결을 확인합니다.
+Git, Python 3.9 이상, curl, Docker Engine과 Compose v2가 필요합니다. curl은 bootstrap의 상태 확인에 사용합니다. 검증 기준은 Linux ARM64 Docker 환경입니다. 다른 CPU·운영체제의 전체 설치는 별도 확인이 필요합니다. Windows에서 Bash 명령을 실행한다면 WSL 터미널을 사용하고 Docker 연결을 확인합니다.
 
 ```bash
 git --version
 python3 --version
+curl --version
 docker version
 docker compose version
 ```

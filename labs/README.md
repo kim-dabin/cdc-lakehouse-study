@@ -82,3 +82,5 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 - [2회차: PostgreSQL CDC 수집과 변경 이벤트 검증](session02/README.md) — Bronze 세 이력·실제 Parquet, 수집 설정, 독립 Python 파서와 구간별 진단.
 
 - [3회차: Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정](session03/README.md) — Flink·Iceberg 정의와 대안, writer/checkpoint/commit, MinIO·운영 관찰과 개인 설계 확정·리뷰.
+
+- [4회차: Spark SQL로 현재 상태를 만드는 Silver 설계](session04/README.md) — 고정 입력으로 최신 후보·버전 조건 MERGE·삭제·재실행을 검증하고 개인 Silver 계약과 SQL로 연결합니다.

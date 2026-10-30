@@ -83,6 +83,22 @@ Bash·Python·Docker Engine·Compose v2 및 Linux ARM64 기준의 환경 조건�
 | u | after | 30000 | 200 | 11 | 같은 환불 정정 |
 | d | before | 30000 | 300 | 12 | 환불 철회 |
 
+### 지난 시간 테이블과 무엇이 다른가요?
+
+1–3회차에 본 공통 테이블을 건드리지 않으려고, 이번 실험은 실습 전용 테이블에 고정 입력을 넣어 진행합니다. 키·버전·삭제 규칙과 MERGE 가드는 공통 파이프라인(`scripts/pipeline.py`)과 같습니다.
+
+| | 지난 시간(1–3회차) | 이번 4회차 실습 |
+|---|---|---|
+| Bronze 테이블 | `lake.bronze.cdc_events`(실제 수집) | `lake.lesson04.<RUN_ID>_bronze`(고정 입력) |
+| Bronze와 토픽 | orders·payments·refunds **세 토픽을 한 테이블**에 함께 쌓고, Silver를 만들 때 `topic`으로 걸러 읽음 | **refunds 토픽 하나만 담는 테이블(1:1)** |
+| Bronze 열 | payload·topic·partition_id·kafka_offset·kafka_ts·ingested_at | 같음 |
+| 데이터 | 실제 원천 변경, 실제 LSN·offset | `refund-r1`·`payment-p1`, LSN 100/200/300, offset 10/11/12 |
+| Silver 테이블 | `lake.silver.refunds` | `lake.lesson04.<RUN_ID>_refunds` |
+| Silver 열 | refund_id·payment_id·amount·status·is_deleted·source_lsn·kafka_offset·source_ts_ms | 앞 7개 같음 + topic·partition_id, source_ts_ms 없음 |
+| 잘못된 입력 | PK가 NULL이면 빼고, LSN이 없으면 -1로 채워 진행 | MERGE 전에 중단 |
+
+Silver에 topic·partition_id를 둔 것은 offset이 같은 토픽·파티션 안에서만 비교할 수 있는 값이라는 점을 드러내기 위해서입니다. 여러 토픽을 한 Bronze 테이블에 모으는 방식도 쓰이는 설계입니다. 그 경우 읽을 때마다 topic으로 거르고, offset을 토픽 사이에서 비교하지 않아야 합니다. 내 프로젝트에서 어느 쪽을 고를지는 [설계 학습지](design-worksheet.md) 0절에 적습니다.
+
 `merge --stage c`, `u`, `d`는 이미 적재된 fixture 중 LSN≤100, ≤200, ≤300 범위를 차례로 선택합니다. `prepare` 이후 실제 CDC가 차례로 도착하는 시연이 아니며, 이 상한은 운영 증분 처리의 watermark가 아닙니다.
 
 실험별 테이블은 `lake.lesson04.<RUN_ID를 변환한 이름>_bronze`와 `..._refunds`입니다. 정확한 이름은 `prepare` 출력의 `tables`에서 확인합니다. 예를 들어 `s04-myname-01`은 테이블 이름에서 `s04_myname_01`로 바뀝니다. 하이픈과 밑줄만 달리한 RUN_ID는 같은 테이블 이름이 될 수 있으므로 다른 실험의 구분으로 사용하지 마세요.

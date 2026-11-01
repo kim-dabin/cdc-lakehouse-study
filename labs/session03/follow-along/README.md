@@ -200,7 +200,7 @@ SELECT topic, partition_id, kafka_offset,
        get_json_object(payload, '\$.before.amount') AS before_amount,
        get_json_object(payload, '\$.after.amount') AS after_amount,
        _file AS parquet_file
-FROM lake.bronze.cdc_events
+FROM lake.bronze.refunds
 WHERE topic = 'cdc.public.refunds'
   AND (get_json_object(payload, '\$.before.refund_id') = '${CASE_ID}-r1'
        OR get_json_object(payload, '\$.after.refund_id') = '${CASE_ID}-r1')
@@ -213,6 +213,8 @@ fi
 터미널의 큰따옴표 안에서는 `${CASE_ID}`가 자신의 값으로 바뀝니다. `\$`는 JSON 경로의 `$`가 SQL로 그대로 전달되도록 합니다. 두 PK 조건을 OR로 묶는 이유는 삭제 이벤트의 after에는 환불 ID가 없기 때문입니다.
 
 원천 PostgreSQL에서 이 SQL을 실행하지 않습니다. 결과는 앞의 Bronze helper와 같은 c/u/d 3행이고, 각 행의 `parquet_file`은 실제 읽은 파일 경로입니다. 세 이벤트가 꼭 파일 세 개라는 뜻은 아닙니다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과입니다.
 
 선택적으로 SQL 편집기를 쓴다면 [bronze-check.sql](bronze-check.sql)을 열고 `__REFUND_ID__` **두 곳 모두** 자신의 환불 ID로 바꿉니다. 다음 출력값을 복사하며, SQL의 바깥 작은따옴표는 유지합니다.
 

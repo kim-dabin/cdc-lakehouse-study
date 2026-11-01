@@ -34,7 +34,7 @@
 1. 원천 PostgreSQL: 해당 환불 행이 사라집니다. 결제와 주문 행은 남습니다.
 2. Kafka `cdc.public.refunds`: `op = d`, `before = 삭제 전 행`, `after = null`인 이벤트가 생성됩니다. 현재 예제는 `REPLICA IDENTITY FULL`이므로 삭제 전 금액·상태도 확인할 수 있습니다. 다른 환경에서 `before`가 언제나 전체 컬럼을 담는다고 일반화하지 않습니다.
 3. Kafka: 같은 키에 **value가 null인 별도의 tombstone**이 뒤따릅니다. 현재 Debezium의 `tombstones.on.delete`는 `true`입니다. `after = null`인 삭제 이벤트와 메시지 value 자체가 null인 tombstone은 다릅니다. [Debezium 공식 문서](https://debezium.io/documentation/reference/3.0/connectors/postgresql.html#postgresql-delete-events)
-4. Bronze `lake.bronze.cdc_events`: 현재 [Flink SQL](../flink/ingest.sql.template)은 원문을 추가하는 방식입니다. 기존 `c`·`u` 이력은 유지되고 **`d` 이벤트가 한 행 추가**됩니다. null tombstone은 `WHERE payload IS NOT NULL`에서 제외됩니다. 삭제 후에도 기존 이벤트를 그대로 `COUNT`하거나 금액을 단순 합산하면 현재 환불 건수·금액이 되지 않습니다.
+4. Bronze `lake.bronze.refunds`: 현재 [Flink SQL](../flink/ingest.sql.template)은 원문을 추가하는 방식입니다. 기존 `c`·`u` 이력은 유지되고 **`d` 이벤트가 한 행 추가**됩니다. null tombstone은 `WHERE payload IS NOT NULL`에서 제외됩니다. 삭제 후에도 기존 이벤트를 그대로 `COUNT`하거나 금액을 단순 합산하면 현재 환불 건수·금액이 되지 않습니다.
 
 **원천 테이블의 현재 상태와 Bronze의 변경 이력은 다른 결과를 보여주는 것이 정상입니다.** 키별 최신 상태를 판별하고 삭제를 적용하는 Silver, 그 상태로 지표를 다시 계산하는 Gold는 후속 처리로 설계합니다.
 

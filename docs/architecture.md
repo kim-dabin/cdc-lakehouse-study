@@ -24,8 +24,8 @@ flowchart TB
     direction TB
     pg[(PostgreSQL 원천 DB<br/>주문 · 결제 · 환불)] -->|WAL / pgoutput| cdc[Debezium · Kafka Connect<br/>초기 스냅샷 + 변경 이벤트]
     cdc --> kafka[Kafka<br/>테이블별 토픽 · 변경 로그 보관]
-    kafka --> flink[Flink SQL<br/>원문 + 토픽·파티션·오프셋 기록]
-    flink -->|체크포인트 후 Iceberg 커밋| bronze[Bronze · Iceberg<br/>추가 전용 CDC 이력]
+    kafka --> flink[Flink SQL · 작업 하나<br/>원문 + 토픽·파티션·오프셋 기록<br/>토픽별로 나눠 쓰기]
+    flink -->|체크포인트 후 Iceberg 커밋| bronze[Bronze · Iceberg<br/>토픽마다 테이블 하나<br/>orders · payments · refunds<br/>추가 전용 CDC 이력]
     bronze --> spark[Spark SQL<br/>키·LSN 기준 최신 상태 · MERGE]
     spark --> silver[Silver · Iceberg<br/>현재 상태 + 삭제 표시 + 버전]
     silver --> dbt[dbt-spark → Spark Thrift<br/>모델 의존성 · SQL · 품질 테스트]
@@ -48,7 +48,7 @@ flowchart TB
 |---|---|---|
 | PostgreSQL | 서비스의 현재 트랜잭션 상태 | 어떤 키가 한 건을 식별하는가? |
 | Kafka | INSERT/UPDATE/DELETE 이벤트 | 어느 토픽·파티션·오프셋까지 전달됐는가? |
-| Bronze | 원문 CDC와 전달 메타데이터 | 수정 전후와 삭제 사건을 다시 읽을 수 있는가? |
+| Bronze | 원문 CDC와 전달 메타데이터, 토픽마다 테이블 하나 | 수정 전후와 삭제 사건을 다시 읽을 수 있는가? |
 | Silver | 키별 최신 상태, 삭제 표시, LSN | 과거 이벤트가 다시 와도 현재 상태가 되돌아가지 않는가? |
 | Gold | 주문일 기준 순결제액 | 환불 수정·삭제 후 기대한 금액과 일치하는가? |
 
@@ -60,6 +60,8 @@ Airflow는 `orchestration` 선택 프로필이다. 이를 기동하고 최초 �
 
 - Kafka와 Spark는 정규 과정에서 배운 기술을 활용한다. 새로운 학습의 중심은 CDC 해석, Iceberg 테이블, 변경 반영, dbt 모델링과 검증이다.
 - Bronze는 원문을 남긴다. 이 실습은 Flink가 Iceberg에 현재 상태를 직접 upsert하는 구조가 아니다. 현재 상태를 만드는 책임은 Spark SQL에 있다.
+- Bronze는 Kafka 토픽마다 Iceberg 테이블 하나다(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`). Flink 작업 `cdc-bronze` 하나가 세 토픽을 한 번 읽고 `topic` 값으로 나눠 쓴다. 출처 확인용 `topic` 열은 그대로 둔다. Silver는 원천 테이블과 같은 이름의 Bronze 테이블 하나만 읽는다. 작업은 Kafka 그룹이 commit한 offset(`group-offsets`)에서 시작하고, 그룹 위치가 없으면 가장 이른 offset부터 읽는다.
+- 2026-11-01 이전에 만든 환경은 세 토픽을 한 테이블(`lake.bronze.cdc_events`)에 모았다. 그 시기의 출력에 보이는 `cdc_events`는 이전 구성의 결과이며, 기존 환경의 전환 절차는 [환경 운영 안내](operations.md#bronze-토픽별-테이블-전환-기존-환경-1회)에 있다. 위 PNG 그림은 Bronze를 상자 하나로 그린 개념도이며 테이블 구성까지 나타내지 않는다.
 - JDBC Catalog와 MinIO는 ARM 맥미니 한 대에서 실행할 수 있는 구성이다. 실제 S3로 옮길 때는 엔드포인트·IAM·네트워크 설정을 바꿔야 한다.
 - Spark SQL과 dbt는 같은 Spark Thrift Server와 Iceberg 카탈로그를 사용한다. dbt 자체가 연산 엔진은 아니다.
 - 기준 구현은 Bronze 전체 조회 → Silver MERGE → Gold 전체 재생성이다. 먼저 결과의 정확성을 확보한 뒤 증분 범위와 마트 갱신 주기를 개선한다.

@@ -72,13 +72,23 @@ cat flink/ingest.sql.template
 파일을 **읽기만** 합니다. SQL Client에 새로 제출하지 않습니다. 아래 부분을 찾아봅니다.
 
 ```sql
-INSERT INTO lake.bronze.cdc_events
+EXECUTE STATEMENT SET
+BEGIN
+INSERT INTO lake.bronze.orders
 SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
-FROM kafka_events
-WHERE payload IS NOT NULL;
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.orders';
+INSERT INTO lake.bronze.payments
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.payments';
+INSERT INTO lake.bronze.refunds
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.refunds';
+END;
 ```
 
-Kafka raw 본문을 `payload` 문자열로 읽고 전달 위치·시각과 함께 이력으로 추가합니다. null 필터는 value 전체가 없는 tombstone을 제외하며, d 본문은 일반 행으로 보존합니다. 이 SQL은 업무 JOIN·집계·현재 상태 upsert·업무 중복 제거를 하지 않습니다.
+Kafka 입력은 한 번 읽고, 세 INSERT가 `topic` 조건으로 나눠 토픽마다 Bronze 테이블 하나에 씁니다. 세 INSERT는 `cdc-bronze` 작업 하나로 실행됩니다. Kafka raw 본문을 `payload` 문자열로 읽고 전달 위치·시각과 함께 이력으로 추가합니다. null 필터는 value 전체가 없는 tombstone을 제외하며, d 본문은 일반 행으로 보존합니다. 이 SQL은 업무 JOIN·집계·현재 상태 upsert·업무 중복 제거를 하지 않습니다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과입니다.
 
 이번 sink의 흐름은 **행을 파일에 쓰기 → checkpoint 준비 때 파일 마감·상태 기록 → 전체 checkpoint 완료 통지 → Iceberg commit**입니다. checkpoint 전까지 모든 행을 메모리에만 모으는 구조는 아닙니다. 파일 작성·checkpoint 성공·테이블 확정은 서로 다른 경계입니다.
 
@@ -91,14 +101,14 @@ date
 ./scripts/lab.sh exec -T catalog-db psql -X -v ON_ERROR_STOP=1 \
   -U catalog -d catalog -c "
 SELECT metadata_location FROM iceberg_tables
-WHERE table_namespace='bronze' AND table_name='cdc_events';"
+WHERE table_namespace='bronze' AND table_name='refunds';"
 ```
 
-`metadata_location` 한 행과 조회 시각을 메모합니다. 여러 행이 나오면 catalog 구분을 확인하고 임의로 하나를 고르지 않습니다. 주소는 `s3://warehouse/bronze/cdc_events/metadata/...metadata.json` 형태이며 실제 파일명은 실행마다 달라집니다.
+`metadata_location` 한 행과 조회 시각을 메모합니다. 여러 행이 나오면 catalog 구분을 확인하고 임의로 하나를 고르지 않습니다. 주소는 `s3://warehouse/bronze/refunds/metadata/...metadata.json` 형태이며 실제 파일명은 실행마다 달라집니다.
 
 브라우저에서 **http://localhost:29001**을 엽니다. 자신의 로컬 `.env`에서 `S3_ACCESS_KEY`·`S3_SECRET_KEY` 값을 확인해 로그인합니다. 이는 격리 실습용 계정이며 실제 AWS 계정이나 회사 키를 입력하는 곳이 아닙니다.
 
-1. **Object Browser → warehouse → bronze/cdc_events/metadata/**로 이동합니다.
+1. **Object Browser → warehouse → bronze/refunds/metadata/**로 이동합니다.
 2. Catalog에서 방금 읽은 파일명으로 검색해 **같은 객체**를 찾습니다. 가장 큰 번호나 가장 최근 수정 시각만으로 고르지 않습니다.
 3. ObjectInfo의 Name·Size·Last Modified를 보고 **Download**합니다. JSON Preview가 지원되지 않거나 MIME type 안내가 나오면 Download한 원본으로 진행합니다.
 4. 다운로드 폴더에서 그 JSON을 텍스트 편집기로 엽니다. 파일을 마우스 오른쪽 버튼으로 눌러 텍스트 편집기를 선택하거나, 편집기의 파일 열기로 내려받은 원본을 선택합니다.
@@ -122,7 +132,7 @@ python3 labs/session03/follow-along/inspect_metadata.py "$METADATA_FILE"
 
 [SQL 따라하기4절](README.md#4-helper-안의-bronze-sql도-직접-실행하기)의 CASE_ID 검증이 포함된 Spark SQL 블록을 다시 실행합니다. 이것은 원천 PostgreSQL용 SQL이 아닙니다.
 
-같은 환불의 c/u/d 행에서 `parquet_file`을 읽습니다. `s3://warehouse/` 뒤가 warehouse 버킷 안의 객체 key입니다. 예를 들어 key가 `bronze/cdc_events/data/...parquet`이면 MinIO에서 **warehouse → bronze/cdc_events/data/**로 이동해 **그 파일명**을 찾습니다. ObjectInfo의 Name·Size를 보고 경로가 같은지 확인합니다. 파일이나 버킷을 삭제하지 않습니다.
+같은 환불의 c/u/d 행에서 `parquet_file`을 읽습니다. `s3://warehouse/` 뒤가 warehouse 버킷 안의 객체 key입니다. 예를 들어 key가 `bronze/refunds/data/...parquet`이면 MinIO에서 **warehouse → bronze/refunds/data/**로 이동해 **그 파일명**을 찾습니다. ObjectInfo의 Name·Size를 보고 경로가 같은지 확인합니다. 파일이나 버킷을 삭제하지 않습니다.
 
 다음 도구로 같은 키에 연결된 현재 파일의 행 수·크기도 읽습니다.
 
@@ -137,7 +147,7 @@ python3 labs/session03/follow-along/inspect_metadata.py "$METADATA_FILE"
 ```bash
 ./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "
 SELECT file_path, record_count, file_size_in_bytes
-FROM lake.bronze.cdc_events.files
+FROM lake.bronze.refunds.files
 ORDER BY file_path LIMIT 3"
 ```
 
@@ -148,7 +158,7 @@ snapshot 이력도 별도로 확인합니다.
 ```bash
 ./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "
 SELECT snapshot_id, committed_at, operation
-FROM lake.bronze.cdc_events.snapshots
+FROM lake.bronze.refunds.snapshots
 ORDER BY committed_at DESC LIMIT 3"
 ```
 

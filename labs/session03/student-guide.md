@@ -93,14 +93,26 @@ Debezium은 DB 변경을 이벤트로 만들고, Kafka는 이를 보관·전달�
 
 ### ③ 환불 한 건은 어떻게 처리하나요?
 
-입력을 읽는 곳을 **source**, 처리 결과를 보내는 곳을 **sink**라고 부릅니다. 이번 흐름은 Kafka source → null 필터·컬럼 선택 → Iceberg sink입니다. `kafka_events`의 Kafka 연결과 출력 Iceberg 테이블·Catalog 연결은 앞선 DDL(CREATE TABLE·CREATE CATALOG)로 미리 등록되어 있습니다. 아래 INSERT SELECT만으로 연결을 처음 만드는 것은 아닙니다. 환불 20,000원 생성 이벤트 한 건을 이 순서로 따라가 봅니다.
+입력을 읽는 곳을 **source**, 처리 결과를 보내는 곳을 **sink**라고 부릅니다. 이번 흐름은 Kafka source → null 필터·topic 조건·컬럼 선택 → 토픽별 Iceberg sink입니다. `kafka_events`의 Kafka 연결과 출력 Iceberg 테이블·Catalog 연결은 앞선 DDL(CREATE TABLE·CREATE CATALOG)로 미리 등록되어 있습니다. 아래 INSERT SELECT만으로 연결을 처음 만드는 것은 아닙니다. 환불 20,000원 생성 이벤트 한 건을 이 순서로 따라가 봅니다.
 
 ```sql
-INSERT INTO lake.bronze.cdc_events
+EXECUTE STATEMENT SET
+BEGIN
+INSERT INTO lake.bronze.orders
 SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
-FROM kafka_events
-WHERE payload IS NOT NULL;
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.orders';
+INSERT INTO lake.bronze.payments
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.payments';
+INSERT INTO lake.bronze.refunds
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.refunds';
+END;
 ```
+
+Kafka 입력은 한 번만 읽습니다. 세 INSERT를 `EXECUTE STATEMENT SET`으로 묶어 `cdc-bronze` 작업 하나로 실행하고, `topic` 조건으로 나눠 토픽마다 Bronze 테이블 하나에 씁니다. 환불 이벤트는 `lake.bronze.refunds`에 쌓입니다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과입니다.
 
 `INSERT INTO`는 보낼 테이블, `SELECT`는 남길 값, `FROM`은 읽을 입력, `WHERE`는 남길 조건입니다. 지금은 SQL을 새로 제출하지 않고 실행 중인 작업의 의미를 읽습니다. `payload`에는 Kafka value 원문을 받습니다. **tombstone은 같은 키에 대해 value가 null인 Kafka 삭제 표시 레코드**입니다. 이 Debezium 예제에서는 d 본문 뒤에 옵니다. `WHERE payload IS NOT NULL`은 이 tombstone을 제외하며, Flink의 자동 삭제 정책이 아닙니다. 이 Kafka 입력에 대한 지속 INSERT가 제출 뒤 어떤 작업으로 실행되는지는 다음 단계에서 봅니다.
 
@@ -191,7 +203,7 @@ kafka_ts TIMESTAMP_LTZ(3) METADATA FROM 'timestamp' VIRTUAL
 
 `METADATA FROM`으로 Kafka가 제공하는 전달 정보를 읽습니다. `VIRTUAL`은 이 컬럼을 Kafka 테이블의 쓰기 대상 스키마에서 제외한다는 뜻입니다. 2절 ③의 SELECT에서 골라 보내면 Bronze 일반 컬럼으로 보존됩니다. offset은 토픽·파티션과 함께 읽으며 전역 업무 순번으로 사용하지 않습니다.
 
-`earliest-offset`은 복원할 상태가 없을 때 보관된 가장 이른 위치에서 시작하는 설정입니다. checkpoint에서 복원할 때는 저장된 입력 위치를 사용합니다. 상태 없이 새 job을 earliest로 제출하는 것은 기존 상태의 복구와 다르며, 기존 Bronze에 과거 입력을 다시 append할 수 있습니다.
+`group-offsets`는 복원할 상태가 없을 때 Kafka 그룹 `flink-cdc-bronze`가 checkpoint 완료 때마다 commit한 위치부터 읽는 설정입니다. commit한 위치가 없는 새 환경은 `properties.auto.offset.reset='earliest'`에 따라 보관된 가장 이른 위치에서 시작합니다. checkpoint나 savepoint에서 복원할 때는 저장된 입력 위치를 사용합니다. 상태 없이 새 job을 제출하는 것은 기존 상태의 복구와 다르며, 그룹 위치가 Bronze의 마지막 commit보다 앞서 있으면 과거 입력을 다시 append할 수 있습니다.
 
 </details>
 
@@ -291,7 +303,7 @@ checkpoint·savepoint는 별도 `flink-state` Docker 볼륨에 있고, Iceberg d
 
 먼저 이론에서 본 참조 방향을 따라가고, 그다음 SQL로 교차 확인합니다. 파일명이나 시각에서 현재 테이블을 추측하지 않습니다.
 
-1. **현재 참조 → JSON:** E의 별도 Catalog PostgreSQL 조회에서 `metadata_location`을 확인합니다. 강사 파일 뷰어의 Object Browser에서 **`warehouse` → `bronze/cdc_events` → `metadata`**의 같은 JSON 객체를 찾습니다. 필요하면 전체 객체 prefix로 검색합니다. 별도 Catalog 화면이 없으면 기존 helper에서 읽은 현재 참조를 강사 화면으로 확인합니다.
+1. **현재 참조 → JSON:** E의 별도 Catalog PostgreSQL 조회에서 `metadata_location`을 확인합니다. 강사 파일 뷰어의 Object Browser에서 **`warehouse` → `bronze/refunds` → `metadata`**의 같은 JSON 객체를 찾습니다. 필요하면 전체 객체 prefix로 검색합니다. 별도 Catalog 화면이 없으면 기존 helper에서 읽은 현재 참조를 강사 화면으로 확인합니다.
 2. **JSON → 파일 목록 → data:** 콘솔은 Name·Size·Last Modified 등 물리 객체 정보를 확인하는 화면으로 사용합니다. **현재 수업 환경에서는 metadata JSON Preview가 되지 않습니다.** 강사가 사전에 Download한 JSON을 로컬 텍스트 편집기로 열어 `current-snapshot-id`를 검색합니다. 파일이 크면 수업 중 다운로드를 기다리지 않습니다. Download 당시의 `metadata_location`·객체 경로·Download 시각을 함께 남기고 준비 파일과 대조합니다. 이후 pointer가 바뀌었다면 과거 시점의 준비본으로 구분하며 현재 파일이라고 부르지 않습니다. snapshot 정보·manifest list 경로를 연결한 뒤 **`data`**의 Parquet 객체 경로·크기·수정 시각을 봅니다. 화면의 폴더는 객체 key의 prefix입니다. 이 프로젝트의 format v2 manifest list·manifest는 Avro여서 콘솔에서 평문 JSON처럼 읽는 파일이 아닙니다.
 3. **SQL 교차 확인:** A의 `snapshots`, C의 `metadata_log_entries`, B의 `files`에서 snapshot·JSON·data 경로를 대조합니다. 시간상 최신 snapshot이나 수정 시각이 최신인 JSON이 항상 current라는 뜻은 아닙니다. `files.record_count`는 파일 전체 행 수이며 특정 환불 키의 이력 수와 다릅니다.
 4. **같은 키로 돌아오기:** D의 `_file`과 topic·partition·offset·op를 확인해 해당 행의 data 파일을 연결합니다. 파일 표본 3개에 이번 경로가 없다고 누락으로 판단하지 않습니다. 여러 이벤트가 같은 `_file`에 들어갈 수 있으며 이벤트 한 건마다 별도 파일이 생기는 것은 아닙니다.

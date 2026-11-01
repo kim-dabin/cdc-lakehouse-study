@@ -71,7 +71,11 @@ SQL [A]는 `after.refund_id`만 조건으로 사용합니다. 슬라이드 5를 
 
 파일 안에서 payload와 topic·partition_id·kafka_offset을 찾아 Bronze 조회 결과와 연결해 보세요. c/u/d 세 이벤트가 반드시 파일 하나에 들어가는 것은 아닙니다. DML 한 번과 파일 한 개, DML 한 번과 snapshot 한 개도 항상 일치하지 않습니다.
 
-SQL [A]의 `lake.bronze.cdc_events.files`는 Iceberg 현재 테이블이 참조하는 파일을 읽는 메타데이터 조회입니다. MinIO 폴더의 모든 파일을 모은 것과 구분합니다. 파일 경로와 실제 내용을 함께 확인한 뒤 수집 결과를 판단합니다.
+SQL [A]의 `lake.bronze.refunds.files`는 Iceberg 현재 테이블이 참조하는 파일을 읽는 메타데이터 조회입니다. MinIO 폴더의 모든 파일을 모은 것과 구분합니다. 파일 경로와 실제 내용을 함께 확인한 뒤 수집 결과를 판단합니다.
+
+공통 Bronze는 Kafka 토픽마다 테이블이 하나입니다. 환불 이력은 `lake.bronze.refunds`에 있고 파일은 MinIO의 `warehouse/bronze/refunds/data/` 아래에 생깁니다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과입니다.
 
 ## 3. PostgreSQL 수집 조건과 Debezium 설정 — 00:30–00:50
 

@@ -15,11 +15,13 @@ Flink와 Iceberg가 무엇인지부터 배웁니다. 이미 배운 Kafka·Spark�
 - [개인 공통 예제 실행](../../docs/self-study.md): 저장소 루트의 기존 실행 스크립트와 개인 Docker 환경 결과 확인.
 - [전체 아키텍처](../../docs/architecture.md): 데이터 흐름·저장·실행 환경.
 
-수업에서는 강사 맥미니 공유 화면을 보며 학생도 실행 전 예상, SQL 작성·읽기, 실제 수집 결과 대조에 참여합니다. 집에서는 제공된 공통 전체 실행 프로그램을 개인 Docker 환경에서 실행합니다. MinIO에서 `warehouse/bronze/cdc_events`의 `data`·`metadata`를 보는 관찰도 수업에 포함됩니다. 현재 수업 콘솔에서는 JSON Preview가 되지 않으므로, 강사가 사전에 Download한 JSON을 로컬 편집기에서 열고 당시 Catalog pointer·객체 경로·Download 시각을 대조합니다. 콘솔의 경로·크기·시각과 snapshots·files·metadata 이력·같은 키 SELECT를 연결합니다.
+수업에서는 강사 맥미니 공유 화면을 보며 학생도 실행 전 예상, SQL 작성·읽기, 실제 수집 결과 대조에 참여합니다. 집에서는 제공된 공통 전체 실행 프로그램을 개인 Docker 환경에서 실행합니다. MinIO에서 `warehouse/bronze/refunds`의 `data`·`metadata`를 보는 관찰도 수업에 포함됩니다. 현재 수업 콘솔에서는 JSON Preview가 되지 않으므로, 강사가 사전에 Download한 JSON을 로컬 편집기에서 열고 당시 Catalog pointer·객체 경로·Download 시각을 대조합니다. 콘솔의 경로·크기·시각과 snapshots·files·metadata 이력·같은 키 SELECT를 연결합니다.
 
 전체 흐름은 첫날 로드맵과 공통 원천 구조 → 문제와 요구 → 도구 정의·대안 → Flink 입력·출력 → Iceberg·commit → 공통 이력·MinIO·지연 관찰 → 운영 판단입니다. 공통 c/u/d·checkpoint·commit을 확인한 뒤 **개인 설계 30분과 리뷰 12분**을 진행합니다. 각자 선택한 도메인에서 원천 2~3개 테이블의 한 행·PK/FK·시간과 순서 기준·이벤트 유형·삭제 정책, 토픽·Bronze 보존 정보와 후속 조인·집계 키를 확정합니다. 개인 프로젝트를 주문 예제로 통일하지 않으며 실제 DDL 구현은 필수가 아닙니다.
 
-Flink checkpoint는 별도 볼륨의 복구 상태이고 Iceberg commit은 테이블 변경 경계입니다. 파일이 생겼다는 사실이나 checkpoint 성공만으로 이번 키의 조회를 단정하지 않습니다. 현재 raw Bronze는 append이며 업무 키 upsert·업무 중복 제거를 하지 않습니다. 단일 원천·토픽별 1파티션·parallelism 1인 학습 환경의 한계도 함께 다룹니다.
+Flink checkpoint는 별도 볼륨의 복구 상태이고 Iceberg commit은 테이블 변경 경계입니다. 파일이 생겼다는 사실이나 checkpoint 성공만으로 이번 키의 조회를 단정하지 않습니다. 현재 raw Bronze는 append이며 업무 키 upsert·업무 중복 제거를 하지 않습니다. 단일 원천·토픽별 1파티션·parallelism 1인 학습 환경의 한계도 함께 다룹니다. Flink 작업 하나가 세 토픽을 읽어 토픽마다 Bronze 테이블 하나에 나눠 씁니다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과입니다.
 
 기존 CASE의 이력·MinIO·SQL 대조를 끝낸 뒤, 강사는 Linux runner의 측정 도구로 새 환불 20,000원 INSERT와 첫 Bronze 조회를 한 번에 관찰합니다. 별도로 환불을 입력하지 않습니다. commit 응답 시각은 DB 내부 commit 시각이 아니며 polling·조회 시간이 포함됩니다. 기존 wait 관찰값이나 Iceberg commit 소요·SLA와 구분하고, timeout·commit 결과 불명확 시 재시도나 정리로 덮지 않습니다.
 

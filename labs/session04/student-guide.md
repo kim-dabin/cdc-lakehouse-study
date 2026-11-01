@@ -13,7 +13,7 @@
 | 층 | 이 과정의 구성 | 맡는 일 | 하지 않는 일 |
 |---|---|---|---|
 | 앞단 통로 | Kafka 토픽(보관 기간이 정해짐) | 변경 이벤트를 잠시 보관하고 전달 | 장기 이력 보관 |
-| Bronze | Flink가 쓰는 첫 Iceberg 테이블 `lake.bronze.cdc_events` | 메시지 원문에 topic·offset 같은 위치 정보만 붙여 append, 이력 보존, 재처리 출발점 | 중복 제거·최신 상태 계산 |
+| Bronze | Flink가 쓰는 첫 Iceberg 테이블. 토픽마다 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`) | 메시지 원문에 topic·offset 같은 위치 정보만 붙여 append, 이력 보존, 재처리 출발점 | 중복 제거·최신 상태 계산 |
 | Silver | Spark SQL MERGE로 만드는 테이블별 현재 상태 | JSON 펴기·타입 맞추기·중복 정리·CDC 병합·늦은 변경 거절·삭제 표시 | 부서별 지표·집계(보통 Gold에서) |
 | Gold | dbt 모델(5회차) | 지표·집계·업무 규칙, 테이블 사이 조인 | 원문 해석 |
 
@@ -91,15 +91,17 @@ Bash·Python·Docker Engine·Compose v2 및 Linux ARM64 기준의 환경 조건�
 
 | | 지난 시간(1–3회차) | 이번 4회차 실습 |
 |---|---|---|
-| Bronze 테이블 | `lake.bronze.cdc_events`(실제 수집) | `lake.lesson04.<RUN_ID>_bronze`(고정 입력) |
-| Bronze와 토픽 | orders·payments·refunds **세 토픽을 한 테이블**에 함께 쌓고, Silver를 만들 때 `topic`으로 걸러 읽음 | **refunds 토픽 하나만 담는 테이블(1:1)** |
+| Bronze 테이블 | `lake.bronze.refunds`(실제 수집) | `lake.lesson04.<RUN_ID>_bronze`(고정 입력) |
+| Bronze와 토픽 | **refunds 토픽 하나만 담는 테이블(1:1)**. orders·payments도 각자 테이블에 쌓임 | **refunds 토픽 하나만 담는 테이블(1:1)** |
 | Bronze 열 | payload·topic·partition_id·kafka_offset·kafka_ts·ingested_at | 같음 |
 | 데이터 | 실제 원천 변경, 실제 LSN·offset | `refund-r1`·`payment-p1`, LSN 100/200/300, offset 10/11/12 |
 | Silver 테이블 | `lake.silver.refunds` | `lake.lesson04.<RUN_ID>_refunds` |
 | Silver 열 | refund_id·payment_id·amount·status·is_deleted·source_lsn·kafka_offset·source_ts_ms | 앞 7개 같음 + topic·partition_id, source_ts_ms 없음 |
 | 잘못된 입력 | PK가 NULL이면 빼고, LSN이 없으면 -1로 채워 진행 | MERGE 전에 중단 |
 
-Silver에 topic·partition_id를 둔 것은 offset이 같은 토픽·파티션 안에서만 비교할 수 있는 값이라는 점을 드러내기 위해서입니다. 여러 토픽을 한 Bronze 테이블에 모으는 방식도 쓰이는 설계입니다. 그 경우 읽을 때마다 topic으로 거르고, offset을 토픽 사이에서 비교하지 않아야 합니다. 내 프로젝트에서 어느 쪽을 고를지는 [설계 학습지](design-worksheet.md) 0절에 적습니다.
+Silver에 topic·partition_id를 둔 것은 offset이 같은 토픽·파티션 안에서만 비교할 수 있는 값이라는 점을 드러내기 위해서입니다. 공통 Bronze와 실습 Bronze 모두 토픽 하나를 테이블 하나에 담지만, offset은 여전히 토픽·파티션마다 따로 매겨지는 위치입니다. 여러 토픽을 한 Bronze 테이블에 모으는 방식도 쓰이는 설계입니다. 그 경우 읽을 때마다 topic으로 거르고, offset을 토픽 사이에서 비교하지 않아야 합니다. 내 프로젝트에서 어느 쪽을 고를지는 [설계 학습지](design-worksheet.md) 0절에 적습니다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과입니다.
 
 `merge --stage c`, `u`, `d`는 이미 적재된 fixture 중 LSN≤100, ≤200, ≤300 범위를 차례로 선택합니다. `prepare` 이후 실제 CDC가 차례로 도착하는 시연이 아니며, 이 상한은 운영 증분 처리의 watermark가 아닙니다.
 

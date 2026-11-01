@@ -25,7 +25,7 @@ flowchart TB
     pg[(PostgreSQL<br/>orders / payments / refunds)] -->|WAL 변경| debezium[Debezium · Kafka Connect]
     debezium --> kafka[Kafka<br/>테이블별 변경 이벤트]
     kafka --> flink[Flink SQL<br/>원문 · 토픽 · 파티션 · 오프셋]
-    flink -->|checkpoint 후 commit| bronze[(Iceberg Bronze<br/>cdc_events · 변경 이력)]
+    flink -->|checkpoint 후 commit| bronze[(Iceberg Bronze<br/>orders / payments / refunds<br/>토픽별 테이블 · 변경 이력)]
     bronze --> spark[Spark SQL<br/>최신 버전 판별 · MERGE]
     spark --> silver[(Iceberg Silver<br/>orders / payments / refunds<br/>현재 상태 · 삭제 표시)]
     silver --> dbt[dbt-spark → Spark Thrift<br/>모델 SQL · 의존성 · 테스트]
@@ -75,11 +75,13 @@ erDiagram
 
 | 계층 | 저장 내용 | 이번 회차 |
 |---|---|---|
-| Bronze cdc_events | CDC 원문과 topic/partition/offset | c/u/d와 동일 수집 위치·내용 검증 |
+| Bronze orders / payments / refunds | 토픽마다 한 테이블. CDC 원문과 topic/partition/offset | c/u/d와 동일 수집 위치·내용 검증 |
 | Silver | 키별 최신 상태·삭제 표시·원천 버전 | 역할 설명, 구현·검증은 후속 회차 |
 | Gold | 활용 테이블과 테스트 | 역할 설명, 모델링은 후속 회차 |
 
-Flink는 Bronze에 append 이력을 저장한다. 원천에서 삭제해도 c/u/d 이력은 남는다. Kafka null tombstone은 Flink 입력에서 제외하며 non-null op=d는 보관한다. source.lsn은 원천 버전 정보이고 Kafka 위치는 토픽·파티션·오프셋을 함께 사용한다. Kafka key는 Bronze 별도 컬럼으로 저장하지 않으며 원천 PK는 payload의 before/after에서 추출한다. 초기 스냅샷은 r, 새 변경은 c/u/d다.
+Flink는 Bronze에 append 이력을 저장한다. Kafka 토픽마다 Bronze 테이블이 하나씩 있어 환불 이력은 `lake.bronze.refunds`에 쌓인다. 원천에서 삭제해도 c/u/d 이력은 남는다. Kafka null tombstone은 Flink 입력에서 제외하며 non-null op=d는 보관한다. source.lsn은 원천 버전 정보이고 Kafka 위치는 토픽·파티션·오프셋을 함께 사용한다. Kafka key는 Bronze 별도 컬럼으로 저장하지 않으며 원천 PK는 payload의 before/after에서 추출한다. 초기 스냅샷은 r, 새 변경은 c/u/d다.
+
+> 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)다. 그 전에 기록한 출력이나 화면에 보이는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 모았던 이전 구성의 결과다.
 
 ## 공통 예제에서 확인할 질문
 

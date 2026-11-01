@@ -53,12 +53,15 @@ def save(record):
     RECORD.write_text(json.dumps(record, indent=2, default=str))
 
 
-def spark(sql):
+def spark(sql, fetch=True):
     from scripts.pipeline import connect, query
     conn = connect(wait=True)
     try:
         cursor = conn.cursor()
         try:
+            if not fetch:
+                cursor.execute(sql)  # DDL/DML: no result set to fetch
+                return None
             return query(cursor, sql)
         finally:
             cursor.close()
@@ -242,7 +245,7 @@ def backfill():
             target = f'lake.bronze.{table}'
             spark(f"""CREATE TABLE IF NOT EXISTS {target} (payload STRING, topic STRING, partition_id INT,
                 kafka_offset BIGINT, kafka_ts TIMESTAMP, ingested_at TIMESTAMP) USING iceberg
-                TBLPROPERTIES ('format-version'='2', 'write.format.default'='parquet')""")
+                TBLPROPERTIES ('format-version'='2', 'write.format.default'='parquet')""", fetch=False)
             existing = spark(f'SELECT count(*) FROM {target}')[0][0]
             copied = 0
             if existing == 0 and legacy[table]:
@@ -251,7 +254,7 @@ def backfill():
                 # One INSERT is one Iceberg commit: the copy is all or nothing.
                 spark(f"""INSERT INTO {target}
                     SELECT payload, topic, partition_id, kafka_offset, kafka_ts, ingested_at
-                    FROM {LEGACY} WHERE topic='{TOPIC[table]}' ORDER BY partition_id, kafka_offset""")
+                    FROM {LEGACY} WHERE topic='{TOPIC[table]}' ORDER BY partition_id, kafka_offset""", fetch=False)
                 copied = sum(v['rows'] for v in legacy[table].values())
             elif existing:
                 print(f'{target} already has {existing} rows; not copying again, verifying only.')

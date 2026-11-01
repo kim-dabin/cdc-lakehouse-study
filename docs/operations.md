@@ -44,6 +44,7 @@ Docker 환경을 실행한 컴퓨터의 브라우저에서 아래 주소를 연�
 | `http://localhost:28080` | Airflow — orchestration 프로필 실행 시 |
 | `http://localhost:29001` | MinIO — 로그인 값은 로컬 `.env` |
 | `http://localhost:24040` | Spark 작업 |
+| `http://localhost:28090` | [Lakehouse Explorer](../tools/explorer/README.md) 선택 실행 시 SQL·Iceberg 파일 조회 |
 
 원천 DB는 localhost 25432, Spark Thrift는 21000, Connect는 28083이다. 컨테이너끼리는 서비스 이름과 내부 포트로 통신하므로 호스트 접속 포트와 구분한다. 여러 프로젝트를 함께 실행할 때는 포트·리소스·스토리지 충돌 여부를 먼저 확인한다.
 

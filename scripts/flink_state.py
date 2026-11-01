@@ -40,8 +40,30 @@ def stop_with_savepoint():
         time.sleep(1)
     raise TimeoutError('Savepoint still in progress; inspect Flink before stopping containers')
 
+def bronze_catalog_tables():
+    """Bronze table names from the Iceberg JDBC catalog (no Spark needed)."""
+    import os
+    import psycopg2
+    try:
+        with psycopg2.connect(host='catalog-db',user='catalog',password=os.environ['CATALOG_PASSWORD'],
+                              dbname='catalog',connect_timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT table_name FROM iceberg_tables WHERE table_namespace='bronze'")
+                return {row[0] for row in cur.fetchall()}
+    except psycopg2.errors.UndefinedTable:
+        return set()  # brand-new catalog: Flink creates the tables on first submission
+
+def legacy_layout_pending():
+    """True while lake.bronze.cdc_events exists but the per-topic tables do not (before migration)."""
+    tables=bronze_catalog_tables()
+    return 'cdc_events' in tables and not {'orders','payments','refunds'} <= tables
+
 def prepare(fresh_state=False):
     if active_jobs():raise RuntimeError('An active ingestion job exists; refusing duplicate submission')
+    if not fresh_state and legacy_layout_pending():
+        raise RuntimeError('This environment still keeps Bronze in lake.bronze.cdc_events. Run '
+                           './scripts/migrate-bronze-per-topic.sh once (docs/operations.md); the saved state of '
+                           'the single-table job cannot be restored into the per-topic job.')
     state=json.loads(STATE.read_text()) if STATE.exists() else {}
     if state and not state.get('savepoint'):
         raise RuntimeError('Previous job has no saved stop point. Recover explicitly; refusing a submission without restored state.')

@@ -232,6 +232,29 @@ class SelfStudyTests(unittest.TestCase):
                     if not line.lstrip().startswith(('--', '#'))]
             self.assertFalse(any('cdc_events' in line for line in code), path)
 
+    def test_submission_refuses_unmigrated_single_table_environment(self):
+        from unittest import mock
+        from scripts import flink_state
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(flink_state, 'active_jobs', return_value=[]):
+            state = Path(tmp) / 'flink-state.json'
+            state.write_text(json.dumps({'job_id': 'old', 'savepoint': 'file:/sp-old'}))
+            (Path(tmp) / 'ingest.sql').write_text('-- per-topic job\n')
+            with mock.patch.object(flink_state, 'STATE', state), \
+                 mock.patch.object(flink_state, 'Path', lambda p: Path(tmp) / Path(p).name):
+                with mock.patch.object(flink_state, 'bronze_catalog_tables', return_value={'cdc_events'}):
+                    with self.assertRaisesRegex(RuntimeError, 'migrate-bronze-per-topic'):
+                        flink_state.prepare()
+                    flink_state.prepare(fresh_state=True)  # the migration itself starts from group offsets
+                    self.assertNotIn('savepoint', (Path(tmp) / 'submit.sql').read_text())
+                tables = {'cdc_events', 'orders', 'payments', 'refunds'}
+                with mock.patch.object(flink_state, 'bronze_catalog_tables', return_value=tables):
+                    flink_state.prepare()  # migrated: a normal restart restores the savepoint
+                    self.assertIn("'execution.savepoint.path' = 'file:/sp-old'", (Path(tmp) / 'submit.sql').read_text())
+                with mock.patch.object(flink_state, 'bronze_catalog_tables', return_value=set()):
+                    state.unlink()
+                    flink_state.prepare()  # fresh environment
+                    self.assertNotIn('savepoint', (Path(tmp) / 'submit.sql').read_text())
+
     def test_case_collision_fails_before_any_write(self):
         with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
             run = FakeRun(Path(tmp))

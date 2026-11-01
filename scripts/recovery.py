@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 import requests
-from scripts.verify import source, wait_event, read, build
+from scripts.verify import source, wait_event, read, build, DUPLICATE_OFFSETS_SQL
 
 STATE=Path('.runtime/recovery.json')
 def checkpoint_state():
@@ -39,7 +39,7 @@ def main():
         assert rows==[(70000,)],rows
         after=checkpoint_state()
         assert after['counts']['restored'] > state['before']['counts']['restored'],after
-        duplicates=read('SELECT topic,partition_id,kafka_offset,count(*) n FROM lake.bronze.cdc_events GROUP BY topic,partition_id,kafka_offset HAVING count(*)>1')
+        duplicates=read(DUPLICATE_OFFSETS_SQL)
         assert not duplicates, duplicates
         result={'run':state['run'],'expected':70000,'actual':rows[0][0],
                 'restored_before':state['before']['counts']['restored'],

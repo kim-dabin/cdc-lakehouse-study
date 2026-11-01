@@ -20,7 +20,25 @@ CREATE DATABASE IF NOT EXISTS lake.`default`;
 CREATE DATABASE IF NOT EXISTS lake.bronze;
 CREATE DATABASE IF NOT EXISTS lake.silver;
 CREATE DATABASE IF NOT EXISTS lake.gold;
-CREATE TABLE IF NOT EXISTS lake.bronze.cdc_events (
+-- One Bronze table per Kafka topic (since 2026-11-01). Same columns as the earlier
+-- single table lake.bronze.cdc_events; `topic` is kept for provenance.
+CREATE TABLE IF NOT EXISTS lake.bronze.orders (
+ payload STRING,
+ topic STRING,
+ partition_id INT,
+ kafka_offset BIGINT,
+ kafka_ts TIMESTAMP_LTZ(3),
+ ingested_at TIMESTAMP_LTZ(3)
+) WITH ('format-version'='2', 'write.format.default'='parquet');
+CREATE TABLE IF NOT EXISTS lake.bronze.payments (
+ payload STRING,
+ topic STRING,
+ partition_id INT,
+ kafka_offset BIGINT,
+ kafka_ts TIMESTAMP_LTZ(3),
+ ingested_at TIMESTAMP_LTZ(3)
+) WITH ('format-version'='2', 'write.format.default'='parquet');
+CREATE TABLE IF NOT EXISTS lake.bronze.refunds (
  payload STRING,
  topic STRING,
  partition_id INT,
@@ -31,6 +49,10 @@ CREATE TABLE IF NOT EXISTS lake.bronze.cdc_events (
 
 -- Raw envelopes are append records, not a decoded upsert changelog.
 -- Null Kafka tombstones are skipped; the preceding op=d envelope is retained.
+-- One Kafka reader for the three topics. group-offsets resumes from the offsets this
+-- group committed at completed checkpoints; a group without commits starts at earliest.
+-- A savepoint restore (stop.sh -> bootstrap.sh, ingest-restart.sh) uses the saved
+-- positions instead of the group offsets.
 CREATE TEMPORARY TABLE kafka_events (
  payload STRING,
  topic STRING METADATA FROM 'topic' VIRTUAL,
@@ -42,10 +64,20 @@ CREATE TEMPORARY TABLE kafka_events (
  'topic-pattern'='cdc.public.(orders|payments|refunds)',
  'properties.bootstrap.servers'='kafka:9092',
  'properties.group.id'='flink-cdc-bronze',
- 'scan.startup.mode'='earliest-offset',
+ 'scan.startup.mode'='group-offsets',
+ 'properties.auto.offset.reset'='earliest',
  'scan.topic-partition-discovery.interval'='5s',
  'format'='raw'
 );
-INSERT INTO lake.bronze.cdc_events
+EXECUTE STATEMENT SET
+BEGIN
+INSERT INTO lake.bronze.orders
 SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
-FROM kafka_events WHERE payload IS NOT NULL;
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.orders';
+INSERT INTO lake.bronze.payments
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.payments';
+INSERT INTO lake.bronze.refunds
+SELECT payload, topic, partition_id, kafka_offset, kafka_ts, CURRENT_TIMESTAMP
+FROM kafka_events WHERE payload IS NOT NULL AND topic = 'cdc.public.refunds';
+END;

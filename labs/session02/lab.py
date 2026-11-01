@@ -82,7 +82,7 @@ def bronze(namespace):
     rid = namespace + '-r1'
     fields = ['topic', 'partition_id', 'kafka_offset', 'payload', 'kafka_ts', 'ingested_at', 'parquet_file']
     rows = spark(f"""SELECT topic,partition_id,kafka_offset,payload,kafka_ts,ingested_at,_file
-        FROM lake.bronze.cdc_events WHERE topic='cdc.public.refunds'
+        FROM lake.bronze.refunds WHERE topic='cdc.public.refunds'
         AND (get_json_object(payload,'$.before.refund_id')='{rid}'
           OR get_json_object(payload,'$.after.refund_id')='{rid}')
         ORDER BY partition_id,kafka_offset""")
@@ -104,11 +104,11 @@ def file_plan(namespace):
     data = bronze(namespace)
     paths = sorted({row['parquet_file'] for row in data['bronze_records']})
     for path in paths:
-        if not re.fullmatch(r's3://warehouse/bronze/cdc_events/data/[A-Za-z0-9_./=-]+\.parquet', path):
+        if not re.fullmatch(r's3://warehouse/bronze/refunds/data/[A-Za-z0-9_./=-]+\.parquet', path):
             raise ValueError('Unexpected Bronze data file path')
     if paths:
         quoted = ','.join("'" + path + "'" for path in paths)
-        records = spark(f'SELECT file_path,file_format,record_count,file_size_in_bytes FROM lake.bronze.cdc_events.files WHERE file_path IN ({quoted}) ORDER BY file_path')
+        records = spark(f'SELECT file_path,file_format,record_count,file_size_in_bytes FROM lake.bronze.refunds.files WHERE file_path IN ({quoted}) ORDER BY file_path')
     else:
         records = []
     data['files'] = [dict(zip(['file_path', 'file_format', 'record_count', 'file_size_in_bytes'], row)) for row in records]
@@ -124,7 +124,7 @@ def parquet_plan(namespace):
                           dbname='catalog', connect_timeout=10, options='-c statement_timeout=10000') as conn:
         conn.set_session(readonly=True)
         with conn.cursor() as cur:
-            cur.execute("SELECT metadata_location FROM iceberg_tables WHERE table_namespace='bronze' AND table_name='cdc_events'")
+            cur.execute("SELECT metadata_location FROM iceberg_tables WHERE table_namespace='bronze' AND table_name='refunds'")
             locations = cur.fetchall()
     if len(locations) != 1:
         raise AssertionError('Expected one current Bronze catalog pointer')
@@ -187,8 +187,9 @@ def kafka_records(namespace):
 
 
 def snapshot_sample():
-    rows = spark("""SELECT topic,partition_id,kafka_offset,payload FROM lake.bronze.cdc_events
-        WHERE get_json_object(payload,'$.op')='r' ORDER BY topic,partition_id,kafka_offset LIMIT 2""")
+    rows = spark(' UNION ALL '.join(
+        f"SELECT topic,partition_id,kafka_offset,payload FROM lake.bronze.{table} WHERE get_json_object(payload,'$.op')='r'"
+        for table in ('orders', 'payments', 'refunds')) + ' ORDER BY topic,partition_id,kafka_offset LIMIT 2')
     return {'origin': 'live_bronze', 'samples': [dict(zip(['topic', 'partition_id', 'kafka_offset', 'payload'], row)) for row in rows],
             'sample_found': bool(rows), 'scope': 'Retained initial snapshot r examples; no new snapshot is triggered. If absent, use the explicitly synthetic parser fixture.'}
 

@@ -29,7 +29,7 @@ public class ReadParquet {
       List<Map<String, Object>> files = new ArrayList<>();
       for (int index = 2; index < args.length; index++) {
         String path = args[index];
-        if (!path.matches("s3://warehouse/bronze/cdc_events/data/[A-Za-z0-9_./=-]+\\.parquet"))
+        if (!path.matches("s3://warehouse/bronze/refunds/data/[A-Za-z0-9_./=-]+\\.parquet"))
           throw new IllegalArgumentException("Unexpected data file path");
         InputFile input = io.newInputFile(path);
         if (input.getLength() > 16 * 1024 * 1024) throw new IllegalArgumentException("Teaching file exceeds 16 MiB safety bound");

@@ -223,8 +223,11 @@ class StudyRun:
         predicates = [f"get_json_object(payload,'$.{part}.{pk}')='{n}-{suffix}'"
                       for part in ('before', 'after')
                       for pk, suffix in [('order_id', 'o1'), ('payment_id', 'p1'), ('refund_id', 'r1')]]
-        return self.sql(name, 'SELECT topic,partition_id,kafka_offset,payload FROM lake.bronze.cdc_events WHERE ' +
-                        ' OR '.join(predicates) + ' ORDER BY topic,partition_id,kafka_offset')
+        # One Bronze table per topic: the same key predicates over the three topic tables.
+        where = ' OR '.join(predicates)
+        return self.sql(name, ' UNION ALL '.join(
+            f'SELECT topic,partition_id,kafka_offset,payload FROM lake.bronze.{table} WHERE {where}'
+            for table in ('orders', 'payments', 'refunds')) + ' ORDER BY topic,partition_id,kafka_offset')
 
     def marts(self, action, expected):
         self.command(action + '-refresh-marts', ['./labs/session01/lab.sh', self.namespace, 'refresh'], timeout=600)

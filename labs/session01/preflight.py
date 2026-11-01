@@ -60,7 +60,8 @@ conn=connect(wait=True)
 try:
     cur=conn.cursor()
     result={table:query(cur,f'SELECT count(*) FROM {table}')[0][0] for table in
-      ['lake.bronze.cdc_events','lake.silver.payments','lake.gold.fct_order_settlement']}
+      ['lake.bronze.orders','lake.bronze.payments','lake.bronze.refunds',
+       'lake.silver.payments','lake.gold.fct_order_settlement']}
     cur.close()
 finally:
     conn.close()

@@ -4,12 +4,14 @@
 -- 파일 전체를 한 번에 실행하지 말고 화면에 맞는 SELECT 한 개씩 선택합니다.
 -- D의 <REFUND_ID> 두 곳을 같은 환불 ID로 교체합니다. ID를 새로 만들라는 뜻은 아닙니다.
 -- 아래 LIMIT는 화면용 표본이며 전체 파일/행 수나 현재 pointer를 결정하지 않습니다.
+-- 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나입니다. 환불 이력은 lake.bronze.refunds에 있습니다.
+-- 그래서 [A]~[C]의 snapshot·파일·metadata는 refunds 테이블만의 기록입니다.
 
 -- [A] Spark SQL: 보존된 snapshot 표본
 -- committed_at이 가장 최신인 snapshot이 항상 current라는 뜻은 아닙니다.
 -- checkpoint ID와 snapshot ID를 일대일로 대응시키지 않습니다.
 SELECT snapshot_id, committed_at, operation
-FROM lake.bronze.cdc_events.snapshots
+FROM lake.bronze.refunds.snapshots
 ORDER BY committed_at DESC
 LIMIT 3;
 
@@ -17,14 +19,14 @@ LIMIT 3;
 -- record_count는 파일 전체 행 수이며 특정 환불 키의 이력 수가 아닙니다.
 -- metadata 조회이므로 Parquet bytes를 직접 디코드한 증거는 아닙니다.
 SELECT file_path, record_count, file_size_in_bytes
-FROM lake.bronze.cdc_events.files
+FROM lake.bronze.refunds.files
 ORDER BY file_path
 LIMIT 3;
 
 -- [C] Spark SQL: metadata 변경 이력과 JSON 경로
 -- 시간 정렬만으로 Catalog의 현재 metadata_location을 대신하지 않습니다.
 SELECT timestamp, file, latest_snapshot_id
-FROM lake.bronze.cdc_events.metadata_log_entries
+FROM lake.bronze.refunds.metadata_log_entries
 ORDER BY timestamp DESC
 LIMIT 2;
 
@@ -36,7 +38,7 @@ LIMIT 2;
 SELECT topic, partition_id, kafka_offset,
        get_json_object(payload, '$.op') AS op,
        _file
-FROM lake.bronze.cdc_events
+FROM lake.bronze.refunds
 WHERE get_json_object(payload, '$.before.refund_id') = '<REFUND_ID>'
    OR get_json_object(payload, '$.after.refund_id') = '<REFUND_ID>'
 ORDER BY kafka_offset
@@ -49,4 +51,4 @@ LIMIT 4;
 SELECT metadata_location
 FROM iceberg_tables
 WHERE table_namespace = 'bronze'
-  AND table_name = 'cdc_events';
+  AND table_name = 'refunds';

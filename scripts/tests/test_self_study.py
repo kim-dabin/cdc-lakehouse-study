@@ -73,7 +73,9 @@ class FakeRun(StudyRun):
             return 'baseline environment prepared'
         if name.startswith('preflight-'):
             return {'ready': True, 'job_id': 'same-job', 'checkpoint_counts': {'failed': 1, 'completed': 10},
-                    'row_counts': {'lake.bronze.cdc_events': 2 if name.endswith('before') else 7}}
+                    'row_counts': {'lake.bronze.orders': 1 if name.endswith('before') else 2,
+                                   'lake.bronze.payments': 1 if name.endswith('before') else 2,
+                                   'lake.bronze.refunds': 0 if name.endswith('before') else 3}}
         if name in ('source-config', 'connector-config'):
             return {}
         if name == 'fresh-source-key':
@@ -213,6 +215,22 @@ class SelfStudyTests(unittest.TestCase):
             self.assertEqual([stage['bronze_records'] for stage in run.stages], [1, 2, 3])
             self.assertEqual([stage['physical_files_read'] for stage in run.stages], [1, 1, 1])
             self.assertEqual(run.result['status'], 'passed')
+
+    def test_bronze_lookups_use_one_table_per_topic(self):
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
+            run = FakeRun(Path(tmp))
+            run.execute()
+            queries = [argv[-1] for name, argv in run.calls if name in ('fresh-bronze-key', 'payment-bronze')]
+            self.assertEqual(len(queries), 2)
+            for sql in queries:
+                self.assertNotIn('cdc_events', sql)
+                for table in ('orders', 'payments', 'refunds'):
+                    self.assertIn(f'FROM lake.bronze.{table} WHERE', sql)
+        # A fresh environment never creates or reads the earlier single table (comments aside).
+        for path in ('flink/ingest.sql.template', 'scripts/pipeline.py', 'scripts/verify.py'):
+            code = [line for line in (ROOT / path).read_text().splitlines()
+                    if not line.lstrip().startswith(('--', '#'))]
+            self.assertFalse(any('cdc_events' in line for line in code), path)
 
     def test_case_collision_fails_before_any_write(self):
         with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):

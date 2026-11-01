@@ -45,11 +45,12 @@ DELETE FROM refunds WHERE refund_id = 'my-r1';
 -- [D] Spark SQL 참고 — 이번 환불 키의 Bronze 이력만 조회합니다.
 -- 읽기용 예제이며 학생이 서버에 접속해 실행하는 과제가 아닙니다.
 -- 실제 조회 시 my-r1을 강사의 CASE_ID-r1로 바꿉니다.
+-- 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나입니다. 환불 이력은 lake.bronze.refunds에 있습니다.
 SELECT get_json_object(payload, '$.op') AS op,
        get_json_object(payload, '$.before.amount') AS before_amount,
        get_json_object(payload, '$.after.amount') AS after_amount,
        topic, partition_id, kafka_offset
-FROM lake.bronze.cdc_events
+FROM lake.bronze.refunds
 WHERE topic = 'cdc.public.refunds'
   AND (get_json_object(payload, '$.after.refund_id') = 'my-r1'
        OR get_json_object(payload, '$.before.refund_id') = 'my-r1')

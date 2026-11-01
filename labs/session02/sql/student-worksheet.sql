@@ -8,6 +8,7 @@
 -- 개인 실행 CASE_ID / 환불 ID:
 
 -- [A] Spark SQL — Bronze의 c/u/d 세 이력과 파일
+-- 2026-11-01부터 공통 Bronze는 토픽마다 테이블 하나입니다. 환불 이력은 lake.bronze.refunds에 있습니다.
 -- 1. 같은 환불을 20000 입력 → 30000 정정 → 삭제하면 어떻게 될까요?
 -- 예상 원천 현재 행 수:
 -- 예상 Bronze 이력 수와 op 순서:
@@ -20,7 +21,7 @@ SELECT get_json_object(payload, '$.op') AS op,
        get_json_object(payload, '$.after.amount') AS after_amount,
        get_json_object(payload, '$.source.lsn') AS source_lsn,
        topic, partition_id, kafka_offset, _file AS parquet_file
-FROM lake.bronze.cdc_events
+FROM lake.bronze.refunds
 WHERE topic = 'cdc.public.refunds'
   AND get_json_object(payload, '$.after.refund_id') = 'YOUR_REFUND_ID'
 ORDER BY partition_id, kafka_offset;
@@ -28,7 +29,7 @@ ORDER BY partition_id, kafka_offset;
 -- 2. Iceberg 현재 테이블이 참조하는 데이터 파일 목록입니다.
 -- 전체 테이블의 파일 목록이며 위 환불 ID만의 파일 목록은 아닙니다.
 SELECT file_path, file_format, record_count, file_size_in_bytes
-FROM lake.bronze.cdc_events.files
+FROM lake.bronze.refunds.files
 WHERE content = 0
 ORDER BY file_path
 LIMIT 10;
@@ -97,7 +98,7 @@ WITH decoded AS (
          CAST(get_json_object(payload, '$.before.amount') AS BIGINT) AS before_amount,
          CAST(get_json_object(payload, '$.after.amount') AS BIGINT) AS after_amount,
          topic, partition_id, kafka_offset
-  FROM lake.bronze.cdc_events
+  FROM lake.bronze.refunds
   WHERE topic = 'cdc.public.refunds'
 )
 SELECT op,

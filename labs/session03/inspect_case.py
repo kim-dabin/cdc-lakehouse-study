@@ -27,7 +27,7 @@ def inspect_case(namespace):
         raise RuntimeError('Expected one RUNNING ingestion job; no restart was requested')
     checkpoints = flink('/jobs/' + jobs[0]['jid'] + '/checkpoints')
     latest = checkpoints.get('latest', {}).get('completed') or {}
-    snapshots = spark('SELECT snapshot_id,committed_at,operation FROM lake.bronze.cdc_events.snapshots ORDER BY committed_at DESC LIMIT 1')
+    snapshots = spark('SELECT snapshot_id,committed_at,operation FROM lake.bronze.refunds.snapshots ORDER BY committed_at DESC LIMIT 1')
     snapshot = dict(zip(['snapshot_id', 'committed_at', 'operation'], snapshots[0])) if snapshots else None
     history = bronze(namespace)
     # Raw payloads remain available through the Session 02 helper when needed.

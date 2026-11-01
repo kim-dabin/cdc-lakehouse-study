@@ -35,18 +35,19 @@ def source(namespace):
 
 
 def bronze_sql(namespace):
-    return f"""SELECT topic,partition_id,kafka_offset,
+    # One Bronze table per topic; the same key filter is applied to each table.
+    return ' UNION ALL '.join(f"""SELECT topic,partition_id,kafka_offset,
         get_json_object(payload,'$.op') op,
         get_json_object(payload,'$.before.amount') before_amount,
         get_json_object(payload,'$.after.amount') after_amount,
         get_json_object(payload,'$.source.lsn') source_lsn,
         kafka_ts,ingested_at
-        FROM lake.bronze.cdc_events
+        FROM lake.bronze.{table}
         WHERE get_json_object(payload,'$.after.order_id')='{namespace}-o1'
            OR get_json_object(payload,'$.before.order_id')='{namespace}-o1'
            OR get_json_object(payload,'$.after.refund_id')='{namespace}-r1'
-           OR get_json_object(payload,'$.before.refund_id')='{namespace}-r1'
-        ORDER BY topic,kafka_offset"""
+           OR get_json_object(payload,'$.before.refund_id')='{namespace}-r1'"""
+        for table in ('orders', 'payments', 'refunds')) + ' ORDER BY topic,kafka_offset'
 
 
 def layers(namespace):
@@ -67,7 +68,7 @@ def wait(namespace,event):
       'delete':('refunds','refund_id',namespace+'-r1','d',30000),
     }[event]
     part='before' if op=='d' else 'after'
-    sql=f"""SELECT count(*) FROM lake.bronze.cdc_events WHERE topic='cdc.public.{table}'
+    sql=f"""SELECT count(*) FROM lake.bronze.{table} WHERE topic='cdc.public.{table}'
         AND get_json_object(payload,'$.op')='{op}'
         AND get_json_object(payload,'$.{part}.{pk}')='{value}'
         AND get_json_object(payload,'$.{part}.amount')='{amount}'"""
@@ -76,7 +77,7 @@ def wait(namespace,event):
     for _ in range(60):
         if spark(sql)[0][0]>0:
             if event=='payment':
-                if spark(f"SELECT count(*) FROM lake.bronze.cdc_events WHERE topic='cdc.public.orders' AND get_json_object(payload,'$.after.order_id')='{namespace}-o1'")[0][0]==0:
+                if spark(f"SELECT count(*) FROM lake.bronze.orders WHERE topic='cdc.public.orders' AND get_json_object(payload,'$.after.order_id')='{namespace}-o1'")[0][0]==0:
                     time.sleep(2);continue
             return {'namespace':namespace,'event':event,'bronze_visible':True,
                     'wait_observed_seconds':round(time.monotonic()-started,2),

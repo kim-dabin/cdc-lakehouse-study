@@ -66,7 +66,7 @@ def source_rows(refund_id):
 
 def bronze_rows(refund_id):
     rows = spark(f"""SELECT topic,partition_id,kafka_offset,payload,kafka_ts,ingested_at
-        FROM lake.bronze.cdc_events
+        FROM lake.bronze.refunds
         WHERE topic='cdc.public.refunds'
         AND (get_json_object(payload,'$.after.refund_id')='{refund_id}'
              OR get_json_object(payload,'$.before.refund_id')='{refund_id}')

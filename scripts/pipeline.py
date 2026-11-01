@@ -31,7 +31,8 @@ def refresh(cursor):
         ddl = ", ".join(f"{k} {v}" for k,v in fields.items())
         cursor.execute(f"CREATE TABLE IF NOT EXISTS lake.silver.{table} ({ddl}, is_deleted BOOLEAN, source_lsn BIGINT, kafka_offset BIGINT, source_ts_ms BIGINT) USING iceberg")
         casts = ", ".join(f"CAST(get_json_object(row_json, '$.{k}') AS {v}) AS {k}" for k,v in fields.items())
-        # Single source, fixed one-partition topics. LSN + offset is local to that topic.
+        # One Bronze table per topic (lake.bronze.<table>), fixed one-partition topics.
+        # LSN + offset is local to that topic. The topic check is defensive only.
         cursor.execute(f"""
         CREATE OR REPLACE TEMP VIEW incoming_{table} AS
         WITH envelopes AS (
@@ -40,7 +41,7 @@ def refresh(cursor):
                  get_json_object(payload,'$.op')='d' is_deleted,
                  COALESCE(CAST(get_json_object(payload,'$.source.lsn') AS BIGINT),-1) source_lsn,
                  kafka_offset, CAST(get_json_object(payload,'$.source.ts_ms') AS BIGINT) source_ts_ms
-          FROM lake.bronze.cdc_events WHERE topic='cdc.public.{table}'
+          FROM lake.bronze.{table} WHERE topic='cdc.public.{table}'
         ), typed AS (SELECT {casts}, is_deleted, source_lsn, kafka_offset, source_ts_ms FROM envelopes),
         ranked AS (SELECT *, row_number() OVER(PARTITION BY {pk} ORDER BY source_lsn DESC, kafka_offset DESC) rn FROM typed)
         SELECT * FROM ranked WHERE rn=1 AND {pk} IS NOT NULL
@@ -70,7 +71,7 @@ def main():
     if args.wait:
         for _ in range(90):
             try:
-                if query(cursor,"SELECT count(*) FROM lake.bronze.cdc_events")[0][0]>=2:
+                if sum(query(cursor,f"SELECT count(*) FROM lake.bronze.{t}")[0][0] for t in MODELS)>=2:
                     break
             except Exception:
                 pass

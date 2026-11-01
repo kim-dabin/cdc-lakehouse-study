@@ -1,6 +1,10 @@
-"""Render local-only config; never put actual credentials in tracked SQL."""
+"""Render local-only config; never put actual credentials in tracked SQL.
+
+--render-only renders .runtime/ingest.sql without touching the Debezium connector.
+"""
 import json
 import os
+import sys
 import time
 from pathlib import Path
 import requests
@@ -16,7 +20,11 @@ def wait(url):
         time.sleep(2)
     raise RuntimeError(f"Service did not become ready: {url}")
 
-wait("http://connect:8083/connectors")
+render_only = sys.argv[1:] == ["--render-only"]
+if sys.argv[1:] and not render_only:
+    raise SystemExit("Usage: configure.py [--render-only]")
+if not render_only:
+    wait("http://connect:8083/connectors")
 wait("http://jobmanager:8081/overview")
 config = {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
@@ -32,12 +40,13 @@ config = {
     "key.converter.schemas.enable": "false", "value.converter.schemas.enable": "false",
     "time.precision.mode": "connect", "heartbeat.interval.ms": "10000"
 }
-r = requests.put("http://connect:8083/connectors/source-postgres/config", json=config, timeout=20)
-r.raise_for_status()
+if not render_only:
+    r = requests.put("http://connect:8083/connectors/source-postgres/config", json=config, timeout=20)
+    r.raise_for_status()
 # SQL escaping applies to SQL string literals, not shell commands.
 password = os.environ["CATALOG_PASSWORD"].replace("'", "''")
 sql = Path("flink/ingest.sql.template").read_text().replace("__CATALOG_PASSWORD__", password)
 sql = sql.replace("__CHECKPOINT_INTERVAL__", os.environ.get("CHECKPOINT_INTERVAL", "10s"))
 Path(".runtime").mkdir(exist_ok=True)
 Path(".runtime/ingest.sql").write_text(sql)
-print("Connector registered; local Flink SQL rendered.")
+print("Local Flink SQL rendered." if render_only else "Connector registered; local Flink SQL rendered.")

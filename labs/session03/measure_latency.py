@@ -17,7 +17,7 @@ import time
 
 
 CASE_PATTERN = r"s01-[a-z0-9-]{3,48}"
-TABLE = "lake.bronze.cdc_events"
+TABLE = "lake.bronze.refunds"
 TOPIC = "cdc.public.refunds"
 SCOPE = (
     "Client observations from one warmed runner process and one monotonic clock. "

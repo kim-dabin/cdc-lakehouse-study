@@ -75,6 +75,57 @@ Airflow는 내부 runner API에 고정된 작업만 요청한다. Docker 소켓�
 5. Bronze SQL에서 원문을 조회한다. RUNNING 또는 checkpoint 성공만으로 적재 완료를 판단하지 않는다.
 6. Silver 최신 버전·삭제 표시, Gold 기대값, dbt 테스트 결과를 확인한다.
 
+## Bronze 토픽별 테이블 전환 (기존 환경 1회)
+
+2026-11-01부터 공통 Bronze는 Kafka 토픽마다 테이블 하나다. `cdc.public.orders`는 `lake.bronze.orders`, `cdc.public.payments`는 `lake.bronze.payments`, `cdc.public.refunds`는 `lake.bronze.refunds`에 쌓인다. 열은 이전과 같고 출처 확인용 `topic` 열도 그대로 둔다. Flink 작업은 여전히 `cdc-bronze` 하나이며 Kafka를 한 번 읽어 세 테이블에 나눠 쓴다. 이 날짜 이전에 만든 환경에는 세 토픽을 함께 담은 `lake.bronze.cdc_events`가 있다. 새로 설치하는 환경은 이 절차가 필요 없다.
+
+Kafka는 7일만 보관하므로 그보다 오래된 이력은 `cdc_events`에서 옮겨야 남는다. 전환 스크립트가 이 복사와 대조를 맡는다. 이미지는 바뀌지 않으므로 다시 빌드하지 않는다.
+
+1. 수업과 자동 갱신이 돌지 않는 시간에 진행한다. Airflow를 켰다면 먼저 `./scripts/lab.sh exec -T airflow airflow dags pause lakehouse_refresh`로 멈춘다.
+2. 코드를 갱신한다(`git pull --ff-only` 또는 패치 적용). 실행 중인 Flink 작업은 이 단계에서 바뀌지 않는다. 새 코드의 Silver 변환은 새 테이블을 읽으므로 전환이 끝날 때까지 `pipeline.py`를 실행하지 않는다.
+3. 전환을 실행한다.
+
+   ```bash
+   ./scripts/migrate-bronze-per-topic.sh
+   ```
+
+   스크립트는 다음 순서로 진행한다.
+   1. 단일 테이블 작업을 savepoint로 중지한다. Kafka 그룹 `flink-cdc-bronze`의 offset과 마지막 Iceberg commit이 같은 지점에서 멈춘다.
+   2. 세 테이블이 없으면 만든다.
+   3. 비어 있는 테이블에만 `cdc_events`의 해당 토픽 행을 그대로 복사한다. 테이블마다 Iceberg commit 한 번이다.
+   4. 토픽마다 행 수, 최소·최대 `kafka_offset`, 서로 다른 offset 수, 내용 checksum이 원본과 같은지 확인한다. 각 테이블에 다른 토픽 행이 없는지, Kafka 그룹 offset이 복사한 이력 바로 다음을 가리키는지(사이에는 tombstone만 허용)도 확인한다.
+   5. `cdc_events`는 수정하거나 삭제하지 않는다.
+   6. 새 작업을 savepoint 없이 제출한다. 작업 구조가 바뀌어 이전 상태를 복원할 수 없기 때문이다. 새 작업은 `group-offsets`로 그룹이 commit한 offset부터 읽는다.
+   7. 새 작업의 첫 checkpoint를 기다린 뒤 시간과 행 수를 출력하고 `artifacts/runs/bronze-migration-*.json`에 남긴다.
+
+   확인에 실패하면 `REFUSED`와 이유를 출력하고 멈춘다. 원인을 해결한 뒤 같은 명령을 다시 실행한다. 끝난 단계는 건너뛰고, 이미 채워진 테이블에는 다시 복사하지 않는다. 진행 기록은 `.runtime/bronze-migration.json`에 있다.
+4. 결과를 확인한다.
+
+   ```bash
+   ./scripts/lab.sh exec -T runner python scripts/pipeline.py
+   ./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql \
+     "SELECT 'orders', count(*) FROM lake.bronze.orders UNION ALL SELECT 'payments', count(*) FROM lake.bronze.payments UNION ALL SELECT 'refunds', count(*) FROM lake.bronze.refunds"
+   ```
+
+   dbt build가 모두 통과하고 Silver·Gold가 전환 전과 같아야 한다. `./scripts/verify.sh`는 원천에 새 검증 행을 만드는 확인이므로 필요할 때만 실행한다. Airflow를 멈췄다면 다시 `unpause`한다.
+
+### 되돌리기
+
+전환 전 단일 테이블 작업의 savepoint는 `.runtime/bronze-migration.json`의 `legacy_savepoint`에 남아 있다. 이 savepoint로 이전 작업을 다시 띄우면 `cdc_events`가 멈췄던 offset부터 Kafka를 다시 읽으므로, 전환 뒤 들어온 변경도 `cdc_events`에 한 번씩 추가된다. Kafka 보관 기간(7일) 안이고 savepoint 디렉터리가 남아 있어야 한다.
+
+```bash
+./scripts/lab.sh exec -T runner python scripts/flink_state.py stop
+git checkout <전환 전 커밋>
+./scripts/lab.sh exec -T runner python -c "import json; r=json.load(open('.runtime/bronze-migration.json')); open('.runtime/flink-state.json','w').write(json.dumps({'job_id': r['legacy_job_id'], 'savepoint': r['legacy_savepoint']}))"
+./scripts/lab.sh exec -T runner python scripts/configure.py
+./scripts/lab.sh exec -T runner python scripts/flink_state.py prepare
+./scripts/lab.sh exec -T jobmanager /opt/flink/bin/sql-client.sh -f /workspace/.runtime/submit.sql > artifacts/runs/flink-submit.txt
+./scripts/lab.sh exec -T runner python scripts/flink_state.py check
+./scripts/lab.sh exec -T runner python scripts/pipeline.py
+```
+
+토픽별 테이블은 그대로 남는다. 다시 전환할 때는 세 테이블을 지우지 않는다. 스크립트가 기존 행을 원본과 대조하고, 전환 뒤 추가된 행은 offset 중복만 검사한다. 다만 되돌린 뒤 다시 전환하면 그 사이 `cdc_events`에만 들어간 행이 토픽별 테이블에 없으므로 대조에서 멈춘다. 이때는 원인과 행 범위를 확인한 뒤 결정한다.
+
 ## 후속 회차 — 복구 실험과 경계
 
 `recovery.sh`는 JobManager를 유지한 채 TaskManager를 중지·시작하는 실습이다. Flink가 보관한 checkpoint와 소스 오프셋으로 재개하는지 검증한다. 계획된 종료는 `stop.sh` → `bootstrap.sh`로 savepoint 복원을 사용한다. 수집 설정을 변경한 뒤에는 `ingest-restart.sh`로 같은 작업을 savepoint에서 재시작한다. 작업의 SQL 구조가 바뀌면 상태 호환성을 별도로 확인해야 한다. 임의로 checkpoint·snapshot·객체 파일을 삭제하지 않는다.

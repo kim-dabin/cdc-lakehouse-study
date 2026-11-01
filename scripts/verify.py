@@ -14,6 +14,11 @@ ORDER = 'VERIFY-' + RUN
 PAYMENT = 'PAY-' + RUN
 REFUND = 'REF-' + RUN
 results = []
+BRONZE_TABLES = ('orders', 'payments', 'refunds')
+# One Bronze table per topic. The same topic-partition-offset must appear only once.
+DUPLICATE_OFFSETS_SQL = ' UNION ALL '.join(
+    f'SELECT topic,partition_id,kafka_offset,count(*) n FROM lake.bronze.{t} GROUP BY topic,partition_id,kafka_offset HAVING count(*)>1'
+    for t in BRONZE_TABLES)
 
 def source(sql, params=()):
     with psycopg2.connect(host='source-db',user='source',password=os.environ['SOURCE_PASSWORD'],dbname='app') as c:
@@ -32,7 +37,7 @@ def wait_event(table, pk, value, op, amount=None):
     if amount is not None:
         condition += f" AND get_json_object(payload,'$.{part}.amount')='{amount}'"
     for _ in range(90):
-        rows=read(f'SELECT payload FROM lake.bronze.cdc_events WHERE {condition} ORDER BY kafka_offset DESC LIMIT 1')
+        rows=read(f'SELECT payload FROM lake.bronze.{table} WHERE {condition} ORDER BY kafka_offset DESC LIMIT 1')
         if rows:
             return rows[0][0]
         time.sleep(2)
@@ -57,7 +62,7 @@ def replay(payload):
     # Wait for the duplicate payload at another Kafka offset to reach Bronze.
     lsn=json.loads(payload)['source']['lsn']
     for _ in range(90):
-        count=read(f"SELECT count(*) FROM lake.bronze.cdc_events WHERE topic='cdc.public.refunds' AND get_json_object(payload,'$.source.lsn')='{lsn}' AND get_json_object(payload,'$.after.refund_id')='{REFUND}'")[0][0]
+        count=read(f"SELECT count(*) FROM lake.bronze.refunds WHERE topic='cdc.public.refunds' AND get_json_object(payload,'$.source.lsn')='{lsn}' AND get_json_object(payload,'$.after.refund_id')='{REFUND}'")[0][0]
         if count>=2:
             return
         time.sleep(2)
@@ -87,7 +92,7 @@ def main():
     check('refund_delete',100000,started,time.monotonic())
     # A prior update arrives after the deletion. It must not resurrect the row.
     started=time.monotonic()
-    older=read(f"SELECT payload FROM lake.bronze.cdc_events WHERE get_json_object(payload,'$.after.refund_id')='{REFUND}' AND get_json_object(payload,'$.op')='u' LIMIT 1")[0][0]
+    older=read(f"SELECT payload FROM lake.bronze.refunds WHERE get_json_object(payload,'$.after.refund_id')='{REFUND}' AND get_json_object(payload,'$.op')='u' LIMIT 1")[0][0]
     replay(older)
     check('old_update_after_delete',100000,started,time.monotonic())
     assert read(f"SELECT is_deleted FROM lake.silver.refunds WHERE refund_id='{REFUND}'")==[(True,)]

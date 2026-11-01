@@ -1,0 +1,95 @@
+# Optional governance stack: OpenMetadata 2.0.5 catalog for dbt column lineage and data contracts.
+# Start (after the main stack is running):
+#   ./scripts/lab.sh -f compose.yaml -f compose.governance.yaml up -d om-server
+# Ingest metadata, dbt lineage and contracts:
+#   ./scripts/governance.sh
+# UI: http://127.0.0.1:28585 (admin@open-metadata.org / admin, local lab only)
+# Needs about 3 GB of free memory for the server, search and database.
+x-om-env: &om-env
+  SERVER_PORT: "8585"
+  SERVER_ADMIN_PORT: "8586"
+  OPENMETADATA_CLUSTER_NAME: cdc-study
+  SERVER_HOST_API_URL: http://om-server:8585/api
+  DB_DRIVER_CLASS: org.postgresql.Driver
+  DB_SCHEME: postgresql
+  DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  DB_USER: openmetadata_user
+  DB_USER_PASSWORD: openmetadata_password
+  DB_HOST: om-db
+  DB_PORT: "5432"
+  OM_DATABASE: openmetadata_db
+  ELASTICSEARCH_HOST: om-search
+  ELASTICSEARCH_PORT: "9200"
+  ELASTICSEARCH_SCHEME: http
+  SEARCH_TYPE: elasticsearch
+  # No Airflow in this lab: ingestion runs as one-off containers (scripts/governance.sh).
+  PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+  OPENMETADATA_HEAP_OPTS: -Xmx1G -Xms1G
+
+services:
+  om-db:
+    image: docker.getcollate.io/openmetadata/postgresql:2.0.5
+    profiles: [governance]
+    command: "--work_mem=10MB"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes: [om-db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: psql -U postgres -tAc 'select 1' -d openmetadata_db
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  om-search:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+    profiles: [governance]
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms768m -Xmx768m
+      - xpack.security.enabled=false
+    volumes: [om-search-data:/usr/share/elasticsearch/data]
+    healthcheck:
+      test: "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"' || exit 1"
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  om-migrate:
+    image: docker.getcollate.io/openmetadata/server:2.0.5
+    profiles: [governance]
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    environment: *om-env
+    depends_on:
+      om-db: {condition: service_healthy}
+      om-search: {condition: service_healthy}
+
+  om-server:
+    image: docker.getcollate.io/openmetadata/server:2.0.5
+    profiles: [governance]
+    restart: unless-stopped
+    environment: *om-env
+    ports: ["127.0.0.1:28585:8585"]
+    depends_on:
+      om-db: {condition: service_healthy}
+      om-search: {condition: service_healthy}
+      om-migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8586/healthcheck"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+
+  om-ingestion:
+    # One-off runner for `metadata ingest`; not a long-running service.
+    image: docker.getcollate.io/openmetadata/ingestion:2.0.5
+    profiles: [governance-run]
+    entrypoint: ["metadata"]
+    working_dir: /workspace
+    volumes: [.:/workspace:ro]
+    environment:
+      OM_JWT: ${OM_JWT:-}
+
+volumes:
+  om-db-data:
+  om-search-data:

@@ -1,0 +1,24 @@
+# OpenMetadata ingestion: dbt descriptions, tests, lineage (incl. column lineage from compiled SQL).
+# Reads the artifacts of the last `dbt build` in dbt/target. scripts/governance.sh fills __OM_JWT__.
+source:
+  type: dbt
+  serviceName: cdc_lakehouse
+  sourceConfig:
+    config:
+      type: DBT
+      dbtConfigSource:
+        dbtConfigType: local
+        dbtManifestFilePath: /workspace/dbt/target/manifest.json
+        dbtRunResultsFilePath: /workspace/dbt/target/run_results.json
+      dbtUpdateDescriptions: true
+      includeTags: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://om-server:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "__OM_JWT__"

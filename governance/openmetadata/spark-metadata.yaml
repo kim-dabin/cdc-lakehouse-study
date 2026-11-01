@@ -1,0 +1,29 @@
+# OpenMetadata ingestion: table metadata from Spark Thrift (HiveServer2 protocol) into service cdc_lakehouse.
+# scripts/governance.sh fills __OM_JWT__ and writes the result to .runtime/om/ (not committed).
+source:
+  type: hive
+  serviceName: cdc_lakehouse
+  serviceConnection:
+    config:
+      type: Hive
+      scheme: hive
+      hostPort: spark:10000
+      auth: NOSASL
+      username: lab
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      schemaFilterPattern:
+        includes: ["^bronze$", "^silver$", "^gold$"]
+      includeViews: false
+      markDeletedTables: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://om-server:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "__OM_JWT__"

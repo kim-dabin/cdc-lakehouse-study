@@ -35,7 +35,7 @@ def main():
         wait_event('payments','payment_id',state['payment'],'u',70000)
         bronze_elapsed=time.monotonic()-state['started']
         build()
-        rows=read(f"SELECT net_paid FROM lake.gold.fct_order_settlement WHERE order_id='{state['order']}'")
+        rows=read(f"SELECT net_paid FROM lake.gold.mart_order_settlement WHERE order_id='{state['order']}'")
         assert rows==[(70000,)],rows
         after=checkpoint_state()
         assert after['counts']['restored'] > state['before']['counts']['restored'],after

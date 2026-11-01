@@ -68,7 +68,7 @@ Airflow는 `orchestration` 선택 프로필이다. 이를 기동하고 최초 �
 - 2026-11-01 이전에 만든 환경은 세 토픽을 한 테이블(`lake.bronze.cdc_events`)에 모았다. 그 시기의 출력에 보이는 `cdc_events`는 이전 구성의 결과이며, 기존 환경의 전환 절차는 [환경 운영 안내](operations.md#bronze-토픽별-테이블-전환-기존-환경-1회)에 있다. 위 PNG 그림은 Bronze를 상자 하나로 그린 개념도이며 테이블 구성까지 나타내지 않는다.
 - JDBC Catalog와 MinIO는 ARM 맥미니 한 대에서 실행할 수 있는 구성이다. 실제 S3로 옮길 때는 엔드포인트·IAM·네트워크 설정을 바꿔야 한다.
 - Spark SQL과 dbt는 같은 Spark Thrift Server와 Iceberg 카탈로그를 사용한다. dbt 자체가 연산 엔진은 아니다.
-- fact·dim은 Silver에 둔다. Silver는 두 단계다. 1단계는 Spark SQL MERGE가 만드는 현재 상태 테이블(원천 구조, 키당 한 행, 삭제 표시)이고, 2단계 Silver core는 dbt가 그 위에 만드는 공통 fact·dim이다. Gold는 소비자에게 맞춘 서빙 테이블과 집계 마트만 둔다. Databricks 메달리온 문서는 dimensional model을 Gold에서 만든다고 설명하지만, 이 과정은 여러 마트가 같은 기준을 다시 쓰도록 공통 fact·dim을 Silver에 둔다. Gold `fct_order_settlement`는 이전 회차 스크립트와 맞추려고 이름을 유지하며 역할은 주문 단위 서빙 테이블이다.
+- fact·dim은 Silver에 둔다. Silver는 두 단계다. 1단계는 Spark SQL MERGE가 만드는 현재 상태 테이블(원천 구조, 키당 한 행, 삭제 표시)이고, 2단계 Silver core는 dbt가 그 위에 만드는 공통 fact·dim이다. Gold는 소비자에게 맞춘 서빙 테이블과 집계 마트만 둔다. Databricks 메달리온 문서는 dimensional model을 Gold에서 만든다고 설명하지만, 이 과정은 여러 마트가 같은 기준을 다시 쓰도록 공통 fact·dim을 Silver에 둔다. Silver core 모델은 `dim_`·`fct_`, Gold 모델은 `mart_`로 이름을 시작한다. 주문 단위 Gold 테이블은 2026-11-01에 `fct_order_settlement`에서 `mart_order_settlement`로 이름을 바꿨다. 그 전에 기록한 출력의 `fct_order_settlement`는 같은 역할의 이전 이름이다.
 - dbt의 `models/silver/` 모델은 `silver` 스키마에 만든다. 기본 규칙이면 `gold_silver`가 되므로 `macros/generate_schema_name.sql`이 지정한 스키마 이름을 그대로 쓴다.
 - 기준 구현은 Bronze 전체 조회 → Silver MERGE → Silver core·Gold 전체 재생성이다. 먼저 결과의 정확성을 확보한 뒤 증분 범위와 마트 갱신 주기를 개선한다.
 - 토픽당 파티션 하나, 원천 DB 하나를 전제로 LSN과 오프셋으로 순서를 판별한다. 토픽 재생성, DB 복원, 다중 파티션 확장은 별도 설계가 필요하다.

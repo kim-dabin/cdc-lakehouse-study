@@ -7,8 +7,8 @@ sources:
       - name: payments
       - name: refunds
 models:
-  - name: fct_order_settlement
-    description: Gold serving table built from the Silver core. Order-date basis net payments per order, not accounting revenue.
+  - name: mart_order_settlement
+    description: Gold order-level mart built from the Silver core. Order-date basis net payments per order, not accounting revenue.
     columns:
       - name: order_id
         tests: [unique, not_null]

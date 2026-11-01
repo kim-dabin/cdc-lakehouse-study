@@ -29,7 +29,7 @@ flowchart TB
     bronze --> spark[Spark SQL<br/>최신 버전 판별 · MERGE]
     spark --> silver[(Iceberg Silver<br/>orders / payments / refunds<br/>현재 상태 · 삭제 표시)]
     silver --> dbt[dbt-spark → Spark Thrift<br/>모델 SQL · 의존성 · 테스트]
-    dbt --> gold[(Iceberg Gold<br/>fct_order_settlement<br/>mart_daily_settlement)]
+    dbt --> gold[(Iceberg Gold<br/>mart_order_settlement<br/>mart_daily_settlement)]
     gold --> result[후속 활용 테이블 조회]
     manual[후속 회차: Silver·Gold 갱신] -.-> spark
     airflow[이후 회차: Airflow 주기 실행] -.-> spark

@@ -56,7 +56,7 @@ def layers(namespace):
       'source':source(namespace),
       'silver_payment':spark(f"SELECT payment_id,amount,is_deleted,source_lsn FROM lake.silver.payments WHERE payment_id='{namespace}-p1'"),
       'silver_refund':spark(f"SELECT refund_id,amount,is_deleted,source_lsn FROM lake.silver.refunds WHERE refund_id='{namespace}-r1'"),
-      'gold_order':spark(f"SELECT order_id,order_date,paid,refunded,net_paid,mart_built_at FROM lake.gold.fct_order_settlement WHERE order_id='{namespace}-o1'"),
+      'gold_order':spark(f"SELECT order_id,order_date,paid,refunded,net_paid,mart_built_at FROM lake.gold.mart_order_settlement WHERE order_id='{namespace}-o1'"),
     }
 
 

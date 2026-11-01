@@ -48,7 +48,7 @@ def build():
 
 def check(label, expected, started, bronze_at):
     build()
-    rows = read(f"SELECT net_paid FROM lake.gold.fct_order_settlement WHERE order_id='{ORDER}'")
+    rows = read(f"SELECT net_paid FROM lake.gold.mart_order_settlement WHERE order_id='{ORDER}'")
     assert rows == [(expected,)], (label, rows, expected)
     results.append({'case':label,'expected_net_paid':expected,'actual_net_paid':rows[0][0],
                     'source_to_bronze_observed_seconds':round(bronze_at-started,3),

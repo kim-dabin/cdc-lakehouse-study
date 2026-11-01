@@ -1,4 +1,4 @@
--- Gold serving table: one row per order, built from the Silver core.
+-- Gold mart: one row per order, built from the Silver core (renamed from fct_order_settlement on 2026-11-01).
 -- Aggregate payments and refunds per order first to avoid join fan-out.
 with payments as (
   select order_id, sum(amount) paid

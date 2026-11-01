@@ -27,9 +27,11 @@ flowchart TB
     kafka --> flink[Flink SQL · 작업 하나<br/>원문 + 토픽·파티션·오프셋 기록<br/>토픽별로 나눠 쓰기]
     flink -->|체크포인트 후 Iceberg 커밋| bronze[Bronze · Iceberg<br/>토픽마다 테이블 하나<br/>orders · payments · refunds<br/>추가 전용 CDC 이력]
     bronze --> spark[Spark SQL<br/>키·LSN 기준 최신 상태 · MERGE]
-    spark --> silver[Silver · Iceberg<br/>현재 상태 + 삭제 표시 + 버전]
+    spark --> silver[Silver 현재 상태 · Iceberg<br/>orders · payments · refunds<br/>키당 한 행 + 삭제 표시 + 버전]
     silver --> dbt[dbt-spark → Spark Thrift<br/>모델 의존성 · SQL · 품질 테스트]
-    dbt --> gold[Gold · Iceberg<br/>주문별·일별 순결제액 마트]
+    dbt --> core[Silver core · Iceberg<br/>dim_order · fct_payment · fct_refund<br/>삭제 제외 · 공통 키 · 서울 기준 주문일]
+    core -->|ref| gold
+    dbt --> gold[Gold · Iceberg<br/>주문별 서빙 테이블 · 일별 순결제액 마트]
     gold --> query[SQL 조회 · 변경 반영 시간 확인]
     airflow[Airflow · 선택 실행<br/>활성화 후 5분 주기] -. 내부 실행 API .-> spark
     airflow -. 내부 실행 API .-> dbt
@@ -37,6 +39,7 @@ flowchart TB
     catalog -. 같은 카탈로그 .-> spark
     storage[(S3 호환 저장소 · 서비스명 minio<br/>Iceberg metadata + Parquet)] --- bronze
     storage --- silver
+    storage --- core
     storage --- gold
     checkpoint[(공유 영속 볼륨<br/>Flink checkpoint · savepoint)] --- flink
   end
@@ -49,8 +52,9 @@ flowchart TB
 | PostgreSQL | 서비스의 현재 트랜잭션 상태 | 어떤 키가 한 건을 식별하는가? |
 | Kafka | INSERT/UPDATE/DELETE 이벤트 | 어느 토픽·파티션·오프셋까지 전달됐는가? |
 | Bronze | 원문 CDC와 전달 메타데이터, 토픽마다 테이블 하나 | 수정 전후와 삭제 사건을 다시 읽을 수 있는가? |
-| Silver | 키별 최신 상태, 삭제 표시, LSN | 과거 이벤트가 다시 와도 현재 상태가 되돌아가지 않는가? |
-| Gold | 주문일 기준 순결제액 | 환불 수정·삭제 후 기대한 금액과 일치하는가? |
+| Silver 현재 상태 | 키별 최신 상태, 삭제 표시, LSN (원천 테이블 구조 그대로) | 과거 이벤트가 다시 와도 현재 상태가 되돌아가지 않는가? |
+| Silver core | 가장 작은 입도의 공통 fact·dim(`dim_order`, `fct_payment`, `fct_refund`), 삭제 제외, 공통 키, 서울 기준 주문일 | 여러 마트가 같은 기준의 주문·결제·환불을 읽는가? |
+| Gold | 소비자용 서빙 테이블과 집계 마트(주문일 기준 순결제액) | 환불 수정·삭제 후 기대한 금액과 일치하는가? |
 
 **실시간 적재와 마트 갱신은 서로 다른 주기다.** Flink의 체크포인트 간격은 기본 10초이고, Iceberg에서 조회 가능한 시점은 실제 커밋 완료 이후다. 기본 환경에서 새 변경을 Gold로 자동 갱신하는 주기 작업은 실행하지 않는다. 수동으로 변환을 실행하거나, 개인 실행 도우미의 `--with-marts`를 선택하면 이번 사건의 Silver·Gold를 갱신한다.
 
@@ -64,7 +68,9 @@ Airflow는 `orchestration` 선택 프로필이다. 이를 기동하고 최초 �
 - 2026-11-01 이전에 만든 환경은 세 토픽을 한 테이블(`lake.bronze.cdc_events`)에 모았다. 그 시기의 출력에 보이는 `cdc_events`는 이전 구성의 결과이며, 기존 환경의 전환 절차는 [환경 운영 안내](operations.md#bronze-토픽별-테이블-전환-기존-환경-1회)에 있다. 위 PNG 그림은 Bronze를 상자 하나로 그린 개념도이며 테이블 구성까지 나타내지 않는다.
 - JDBC Catalog와 MinIO는 ARM 맥미니 한 대에서 실행할 수 있는 구성이다. 실제 S3로 옮길 때는 엔드포인트·IAM·네트워크 설정을 바꿔야 한다.
 - Spark SQL과 dbt는 같은 Spark Thrift Server와 Iceberg 카탈로그를 사용한다. dbt 자체가 연산 엔진은 아니다.
-- 기준 구현은 Bronze 전체 조회 → Silver MERGE → Gold 전체 재생성이다. 먼저 결과의 정확성을 확보한 뒤 증분 범위와 마트 갱신 주기를 개선한다.
+- fact·dim은 Silver에 둔다. Silver는 두 단계다. 1단계는 Spark SQL MERGE가 만드는 현재 상태 테이블(원천 구조, 키당 한 행, 삭제 표시)이고, 2단계 Silver core는 dbt가 그 위에 만드는 공통 fact·dim이다. Gold는 소비자에게 맞춘 서빙 테이블과 집계 마트만 둔다. Databricks 메달리온 문서는 dimensional model을 Gold에서 만든다고 설명하지만, 이 과정은 여러 마트가 같은 기준을 다시 쓰도록 공통 fact·dim을 Silver에 둔다. Gold `fct_order_settlement`는 이전 회차 스크립트와 맞추려고 이름을 유지하며 역할은 주문 단위 서빙 테이블이다.
+- dbt의 `models/silver/` 모델은 `silver` 스키마에 만든다. 기본 규칙이면 `gold_silver`가 되므로 `macros/generate_schema_name.sql`이 지정한 스키마 이름을 그대로 쓴다.
+- 기준 구현은 Bronze 전체 조회 → Silver MERGE → Silver core·Gold 전체 재생성이다. 먼저 결과의 정확성을 확보한 뒤 증분 범위와 마트 갱신 주기를 개선한다.
 - 토픽당 파티션 하나, 원천 DB 하나를 전제로 LSN과 오프셋으로 순서를 판별한다. 토픽 재생성, DB 복원, 다중 파티션 확장은 별도 설계가 필요하다.
 - 단일 노드 수업 환경이다. TaskManager 복구를 실습하며, Mac mini나 JobManager 전체 장애에 대한 HA를 제공하지 않는다. checkpoint 볼륨을 삭제하거나 Kafka 보관 기간이 지나면 복구 조건이 달라진다.
 

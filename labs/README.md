@@ -84,3 +84,5 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 - [3회차: Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정](session03/README.md) — Flink·Iceberg 정의와 대안, writer/checkpoint/commit, MinIO·운영 관찰과 개인 설계 확정·리뷰.
 
 - [4회차: Spark SQL로 현재 상태를 만드는 Silver 설계](session04/README.md) — 고정 입력으로 최신 후보·버전 조건 MERGE·삭제·재실행을 검증하고 개인 Silver 계약과 SQL로 연결합니다.
+
+- [5회차: dbt로 Gold 지표와 테스트 설계하기](session05/README.md): 지표 정의부터 집계 단위·셀 행의 조건·fan-out까지 정하고 dbt 모델과 데이터 테스트로 남기는 과정을 공통 예제 코드로 읽습니다.

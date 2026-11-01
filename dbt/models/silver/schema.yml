@@ -1,0 +1,31 @@
+version: 2
+models:
+  - name: dim_order
+    description: Silver core order dimension. One row per order that is not deleted; order_date is the Asia/Seoul calendar date.
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: order_date
+        tests: [not_null]
+  - name: fct_payment
+    description: Silver core payment fact at the smallest grain. One row per payment that is not deleted.
+    columns:
+      - name: payment_id
+        tests: [unique, not_null]
+      - name: order_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_order')
+                field: order_id
+  - name: fct_refund
+    description: Silver core refund fact at the smallest grain. One row per refund that is not deleted; order_id comes from its payment.
+    columns:
+      - name: refund_id
+        tests: [unique, not_null]
+      - name: payment_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('fct_payment')
+                field: payment_id

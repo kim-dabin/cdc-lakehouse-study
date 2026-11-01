@@ -4,7 +4,11 @@ config-version: 2
 profile: cdc_study
 model-paths: [models]
 test-paths: [tests]
+macro-paths: [macros]
 models:
   cdc_study:
     +materialized: table
     +file_format: iceberg
+    # Silver core (fact/dim) lives next to the CDC current-state tables in lake.silver.
+    silver:
+      +schema: silver

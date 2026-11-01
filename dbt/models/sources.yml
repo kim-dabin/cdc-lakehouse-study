@@ -5,5 +5,8 @@ sources:
     description: CDC current-state tables built by scripts/pipeline.py (one row per key, deletes kept as is_deleted). Not built by dbt.
     tables:
       - name: orders
+        description: Current state of source orders (one row per order_id).
       - name: payments
+        description: Current state of source payments (one row per payment_id).
       - name: refunds
+        description: Current state of source refunds (one row per refund_id).

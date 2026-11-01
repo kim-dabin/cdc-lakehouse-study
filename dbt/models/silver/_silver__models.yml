@@ -2,30 +2,72 @@ version: 2
 models:
   - name: dim_order
     description: Silver core order dimension. One row per order that is not deleted; order_date is the Asia/Seoul calendar date.
+    config:
+      contract: {enforced: true}
     columns:
       - name: order_id
+        data_type: string
+        description: Order key from the source orders table.
         tests: [unique, not_null]
+      - name: ordered_at
+        data_type: timestamp
+        description: Time the order was placed (stored as a UTC instant).
       - name: order_date
+        data_type: date
+        description: Order date in Asia/Seoul. Every Gold table uses this date.
         tests: [not_null]
+      - name: status
+        data_type: string
+        description: Order status from the source.
   - name: fct_payment
     description: Silver core payment fact at the smallest grain. One row per payment that is not deleted.
+    config:
+      contract: {enforced: true}
     columns:
       - name: payment_id
+        data_type: string
+        description: Payment key from the source payments table.
         tests: [unique, not_null]
       - name: order_id
+        data_type: string
+        description: Order the payment belongs to.
         tests:
           - relationships:
               arguments:
                 to: ref('dim_order')
                 field: order_id
+      - name: amount
+        data_type: bigint
+        description: Payment amount in KRW.
+      - name: status
+        data_type: string
+        description: Payment status from the source (Gold counts only 'success').
   - name: fct_refund
     description: Silver core refund fact at the smallest grain. One row per refund that is not deleted; order_id comes from its payment.
+    config:
+      contract: {enforced: true}
     columns:
       - name: refund_id
+        data_type: string
+        description: Refund key from the source refunds table.
         tests: [unique, not_null]
       - name: payment_id
+        data_type: string
+        description: Payment the refund belongs to.
         tests:
           - relationships:
               arguments:
                 to: ref('fct_payment')
                 field: payment_id
+      - name: order_id
+        data_type: string
+        description: Order key resolved through the payment (empty when the payment was deleted).
+      - name: amount
+        data_type: bigint
+        description: Refund amount in KRW.
+      - name: status
+        data_type: string
+        description: Refund status from the source.
+      - name: payment_status
+        data_type: string
+        description: Status of the linked payment (empty when the payment was deleted).

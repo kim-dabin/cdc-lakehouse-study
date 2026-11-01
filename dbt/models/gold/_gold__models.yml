@@ -2,12 +2,50 @@ version: 2
 models:
   - name: mart_order_settlement
     description: Gold order-level mart built from the Silver core. Order-date basis net payments per order, not accounting revenue.
+    config:
+      contract: {enforced: true}
     columns:
       - name: order_id
+        data_type: string
+        description: Order key (one row per order).
         tests: [unique, not_null]
       - name: order_date
+        data_type: date
+        description: Order date in Asia/Seoul, from dim_order.
         tests: [not_null]
+      - name: paid
+        data_type: bigint
+        description: Sum of successful payments for the order.
+      - name: refunded
+        data_type: bigint
+        description: Sum of successful refunds whose payment is also successful.
+      - name: net_paid
+        data_type: bigint
+        description: paid minus refunded. Not accounting revenue.
+      - name: mart_built_at
+        data_type: timestamp
+        description: Time this table was built (changes on every run).
   - name: mart_daily_settlement
+    description: Gold daily mart. One row per order date, summed from mart_order_settlement.
+    config:
+      contract: {enforced: true}
     columns:
       - name: order_date
+        data_type: date
+        description: Order date in Asia/Seoul (one row per day).
         tests: [unique, not_null]
+      - name: order_count
+        data_type: bigint
+        description: Number of orders on that date.
+      - name: paid
+        data_type: bigint
+        description: Sum of paid over the day's orders.
+      - name: refunded
+        data_type: bigint
+        description: Sum of refunded over the day's orders.
+      - name: net_paid
+        data_type: bigint
+        description: Sum of net_paid over the day's orders.
+      - name: mart_built_at
+        data_type: timestamp
+        description: Latest build time among the day's order rows.

@@ -9,6 +9,8 @@ models:
   cdc_study:
     +materialized: table
     +file_format: iceberg
-    # Silver core (fact/dim) lives next to the CDC current-state tables in lake.silver.
+    # One folder per layer. Silver core (fact/dim) lives next to the CDC current-state tables in lake.silver.
     silver:
       +schema: silver
+    gold:
+      +schema: gold

@@ -1,0 +1,13 @@
+version: 2
+models:
+  - name: mart_order_settlement
+    description: Gold order-level mart built from the Silver core. Order-date basis net payments per order, not accounting revenue.
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: order_date
+        tests: [not_null]
+  - name: mart_daily_settlement
+    columns:
+      - name: order_date
+        tests: [unique, not_null]

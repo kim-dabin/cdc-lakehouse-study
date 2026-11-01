@@ -70,7 +70,7 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 |---|---|
 | SELECT만 쓰면 테이블·뷰 생성(materialization) | 모델 파일에 CREATE 문이 없고 모든 모델이 table(Iceberg) |
 | `ref`·`source`로 실행 순서와 계보(lineage) | Silver core(`dim_order`, `fct_payment`, `fct_refund`)를 먼저, Gold(주문 마트 → 일별 마트)를 나중에 실행 |
-| 테스트·설명을 SQL 옆에 | 데이터 테스트 15개(Silver core 9, Gold 6), `schema.yml`·`sources.yml`의 설명 |
+| 테스트·설명을 SQL 옆에 | 데이터 테스트 15개(Silver core 9, Gold 6), `_silver__models.yml`·`_gold__models.yml`의 설명 |
 | Git 브랜치·리뷰·CI 흐름 | SQL과 테스트를 한 PR로 함께 리뷰 (8절) |
 | 증분 모델로 바뀐 부분만 반영 | 6회차 주제, 지금은 매번 전체 교체 |
 
@@ -102,18 +102,19 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 
 | 파일 | 맡는 일 | 우리 프로젝트 (코드) |
 |---|---|---|
-| [`dbt_project.yml`](../../dbt/dbt_project.yml) | 프로젝트 이름·기본 설정 | 모든 모델 `materialized: table`, `file_format: iceberg`. `models/silver/`는 `+schema: silver` |
+| [`dbt_project.yml`](../../dbt/dbt_project.yml) | 프로젝트 이름·기본 설정 | 모든 모델 `materialized: table`, `file_format: iceberg`. 층마다 폴더 하나: `models/silver/`는 `+schema: silver`, `models/gold/`는 `+schema: gold` |
 | [`profiles.yml`](../../dbt/profiles.yml) | 접속 정보 | Spark Thrift(`spark:10000`), 기본 schema `gold` |
-| [`macros/generate_schema_name.sql`](../../dbt/macros/generate_schema_name.sql) | 스키마 이름 규칙 | 모델에 지정한 스키마 이름(`silver`)을 그대로 씀 |
-| [`models/sources.yml`](../../dbt/models/sources.yml) | 원천 선언, Gold 모델 설명과 테스트 | Silver 현재 상태 세 테이블, Gold 테스트 다섯 개 |
+| [`macros/generate_schema_name.sql`](../../dbt/macros/generate_schema_name.sql) | 스키마 이름 규칙 | 모델에 지정한 스키마 이름(`silver`, `gold`)을 그대로 씀 |
+| [`models/sources.yml`](../../dbt/models/sources.yml) | 원천 선언 | dbt 밖에서 `pipeline.py`가 만든 Silver 현재 상태 세 테이블 |
 | [`models/silver/*.sql`](../../dbt/models/silver/) | Silver core 모델 | `dim_order`, `fct_payment`, `fct_refund` |
-| [`models/silver/schema.yml`](../../dbt/models/silver/schema.yml) | Silver core 설명과 테스트 | 테스트 아홉 개 |
-| [`models/*.sql`](../../dbt/models/) | Gold 모델 | `mart_order_settlement`, `mart_daily_settlement` |
+| [`models/silver/_silver__models.yml`](../../dbt/models/silver/_silver__models.yml) | Silver core 설명과 테스트 | 테스트 아홉 개 |
+| [`models/gold/*.sql`](../../dbt/models/gold/) | Gold 모델 | `mart_order_settlement`, `mart_daily_settlement` |
+| [`models/gold/_gold__models.yml`](../../dbt/models/gold/_gold__models.yml) | Gold 설명과 테스트 | 테스트 다섯 개 |
 | [`tests/*.sql`](../../dbt/tests/settlement_balance.sql) | 규칙을 어긴 행을 찾는 SELECT | `settlement_balance` |
 
-모델 파일에는 CREATE 문이 없고 테이블로 만들지 뷰로 만들지는 materialization 설정이 정합니다. 실측(11/1): `Found 5 models, 15 data tests, 3 sources`.
+모델 파일에는 CREATE 문이 없고 테이블로 만들지 뷰로 만들지는 materialization 설정이 정합니다. 설명·테스트를 담은 YAML 파일은 dbt가 이름을 보지 않고 `models/` 아래의 `.yml`을 모두 읽습니다. 이 과정은 층마다 폴더를 두고 그 폴더의 모델 설명을 `_층__models.yml`에 모았습니다. 이름 앞의 밑줄은 폴더에서 맨 위에 보이게 하려는 관례입니다. [properties 파일](https://docs.getdbt.com/reference/define-properties) 실측(11/1): `Found 5 models, 15 data tests, 3 sources`.
 
-스키마 이름 규칙을 따로 둔 이유가 있습니다. dbt는 기본으로 접속 정보의 스키마(`gold`) 뒤에 모델에 지정한 스키마를 붙여 `gold_silver` 같은 이름을 만듭니다. 이 과정은 Silver core를 Silver 현재 상태와 같은 `lake.silver`에 두려고 지정한 이름을 그대로 쓰는 매크로를 넣었습니다. [custom schemas](https://docs.getdbt.com/docs/build/custom-schemas)
+스키마 이름 규칙을 따로 둔 이유가 있습니다. dbt는 기본으로 접속 정보의 스키마(`gold`) 뒤에 모델에 지정한 스키마를 붙여 `gold_silver` 같은 이름을 만듭니다. 이 과정은 Silver core를 Silver 현재 상태와 같은 `lake.silver`에, Gold를 `lake.gold`에 두려고 지정한 이름을 그대로 쓰는 매크로를 넣었습니다. [custom schemas](https://docs.getdbt.com/docs/build/custom-schemas)
 
 최신 문서는 YAML에서 `data_tests:` 키를 쓰지만 저장소의 `tests:` 키도 이번 버전에서 그대로 인식됩니다(실측 11/1: 15 data tests).
 
@@ -151,7 +152,7 @@ Done. PASS=20 WARN=0 ERROR=0 SKIP=0
 | 환불액 `refunded` | 성공 환불 합. 환불에 연결된 결제도 성공이어야 함. 삭제(철회)된 환불은 Silver core에서 이미 빠짐 | 철회된 환불 |
 | 순결제액 `net_paid` | `paid − refunded`, 주문일 기준 | 회계 매출, 환불일 기준 정산 |
 
-[`sources.yml`](../../dbt/models/sources.yml)의 Gold 설명에는 `Gold serving table built from the Silver core. Order-date basis net payments per order, not accounting revenue.`라고 적혀 있습니다. 회계 매출이 아니라는 점까지 적어 두면 다른 부서 숫자와 다를 때 무엇이 다른지 바로 설명할 수 있습니다.
+[`_gold__models.yml`](../../dbt/models/gold/_gold__models.yml)의 주문 마트 설명에는 `Gold order-level mart built from the Silver core. Order-date basis net payments per order, not accounting revenue.`라고 적혀 있습니다. 회계 매출이 아니라는 점까지 적어 두면 다른 부서 숫자와 다를 때 무엇이 다른지 바로 설명할 수 있습니다.
 
 주문일 기준이라 10월 30일 주문이 10월 31일에 환불되면 그 환불은 10월 30일 숫자에서 빠집니다. 이미 본 과거 날짜의 숫자도 나중에 바뀔 수 있으며 이 문제는 6회차 소급 정정에서 다시 다룹니다.
 
@@ -253,7 +254,7 @@ where not r.is_deleted
 
 ### Gold
 
-[`mart_order_settlement.sql`](../../dbt/models/mart_order_settlement.sql) 전체입니다.
+[`mart_order_settlement.sql`](../../dbt/models/gold/mart_order_settlement.sql) 전체입니다.
 
 ```sql
 -- Gold mart: one row per order, built from the Silver core (renamed from mart_order_settlement on 2026-11-01).
@@ -285,7 +286,7 @@ left join refunds r on o.order_id=r.order_id
 
 삭제 제외, 주문 키 찾기, 날짜 변환이 Silver core로 옮겨 가서 Gold SQL에는 지표 규칙(성공 건만, 결제 − 환불)과 fan-out을 피하는 묶는 순서만 남았습니다. 실측(11/1): 이렇게 바꾼 뒤 Gold 두 테이블의 내용은 바꾸기 직전 빌드와 같았습니다(`mart_built_at`을 빼고 비교).
 
-[`mart_daily_settlement.sql`](../../dbt/models/mart_daily_settlement.sql) 전체입니다.
+[`mart_daily_settlement.sql`](../../dbt/models/gold/mart_daily_settlement.sql) 전체입니다.
 
 ```sql
 select order_date, count(*) order_count, sum(paid) paid,
@@ -310,7 +311,7 @@ group by order_date
 
 ### 우리 프로젝트의 테스트 열다섯 개
 
-Silver core 테스트 아홉 개는 [`models/silver/schema.yml`](../../dbt/models/silver/schema.yml)에 있습니다.
+Silver core 테스트 아홉 개는 [`models/silver/_silver__models.yml`](../../dbt/models/silver/_silver__models.yml)에 있습니다.
 
 ```yaml
 models:
@@ -344,7 +345,7 @@ models:
 
 (설명 줄은 줄였습니다.) 저장소는 relationships 테스트의 인자를 `arguments:` 아래에 적었고 공통 환경의 dbt 1.12.5에서 그대로 동작했습니다(실측 11/1).
 
-Gold 테스트 여섯 개 중 다섯 개는 [`sources.yml`](../../dbt/models/sources.yml)에 붙어 있습니다. 이 파일에는 Silver 현재 상태 원천 선언과 Gold 모델 설명·테스트가 함께 들어 있습니다.
+Gold 테스트 여섯 개 중 다섯 개는 [`models/gold/_gold__models.yml`](../../dbt/models/gold/_gold__models.yml)에 붙어 있습니다. 원천 선언은 [`models/sources.yml`](../../dbt/models/sources.yml)에 따로 있습니다.
 
 ```yaml
 models:

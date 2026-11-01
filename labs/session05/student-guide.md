@@ -17,7 +17,7 @@
 | Bronze | Flink가 토픽마다 하나씩 쓰는 Iceberg 테이블(`lake.bronze.orders`·`payments`·`refunds`) | 변경 원문을 그대로 append, 재처리 출발점 |
 | Silver 현재 상태 | Spark SQL MERGE(`scripts/pipeline.py`), `lake.silver.orders`·`payments`·`refunds` | 원천 테이블 구조 그대로 키당 한 행, 삭제 표시(`is_deleted`) 보존 (4회차) |
 | Silver core | dbt 모델 → Spark → Iceberg, `lake.silver.dim_order`·`fct_payment`·`fct_refund` | 삭제 제외, 공통 키(환불 → 결제 → 주문), 서울 기준 주문일. 가장 작은 입도의 공통 fact·dim |
-| Gold | dbt 모델 → Spark → Iceberg, `lake.gold.fct_order_settlement`·`mart_daily_settlement` | 소비자에게 맞춘 서빙 테이블과 집계 마트. 지표 규칙(성공 건만, 결제 − 환불) |
+| Gold | dbt 모델 → Spark → Iceberg, `lake.gold.mart_order_settlement`·`mart_daily_settlement` | 소비자에게 맞춘 서빙 테이블과 집계 마트. 지표 규칙(성공 건만, 결제 − 환불) |
 
 공통 환경의 Bronze는 2026-11-01부터 토픽마다 테이블 하나로 나뉘었습니다. 이전 회차 자료에 나오는 `lake.bronze.cdc_events`는 세 토픽을 한 테이블에 담던 이전 구조입니다. 쌓여 있던 이력은 토픽별 테이블로 옮겼고 옮긴 내용이 원래 테이블과 같은지 체크섬으로 확인했습니다(실측 11/1). 입력이 같으니 Silver를 다시 만들어도 같은 결과가 나옵니다. 다만 공통 환경의 Silver는 10/23 이후 갱신하지 않은 상태였기 때문에 11/1에 파이프라인을 실행하면서 10/23~10/25에 Bronze로 들어온 이벤트가 함께 반영됐습니다. 그래서 10/31 기록보다 행 수가 늘었습니다(Silver 주문 19 → 27, Gold 10월 19일 주문 15 → 23건). 4회차 실습의 `lake.lesson04.<RUN_ID>_bronze`처럼 Bronze 한 테이블이 토픽 하나를 담는 모양입니다.
 
@@ -34,7 +34,7 @@
 
 이 과정은 B를 고릅니다. 정산 마트뿐 아니라 환불 분석이나 결제 실패 분석 같은 다른 마트도 같은 주문·결제·환불 기준을 써야 한다고 보기 때문입니다. 그래서 Silver를 두 단계로 나눕니다. 4회차의 현재 상태 테이블은 원천 구조와 삭제 표시를 그대로 두고, 그 위에 dbt로 Silver core를 만듭니다. Gold는 Silver core만 읽어 소비자용 테이블을 만듭니다. Databricks 문서가 말하는 "non-aggregated representation"은 두 단계 모두에 해당합니다(설계 해석).
 
-Gold의 `fct_order_settlement`는 1회차부터 쓰던 이름이라 검증 스크립트(`scripts/verify.py` 등)가 그대로 동작하도록 이름을 유지했습니다. 역할은 fact가 아니라 주문 단위 서빙 테이블입니다. 이름을 바꾸는 일은 나중 과제로 남깁니다(설계).
+이름도 층에 맞췄습니다. Silver core 모델은 `dim_`·`fct_`로, Gold 모델은 `mart_`로 시작합니다. 주문 단위 Gold 테이블은 2026-11-01에 `fct_order_settlement`에서 `mart_order_settlement`로 이름을 바꿨고 바꾸기 전후 값이 같은 것을 확인했습니다(실측(11/1), 생성 시각 열 `mart_built_at` 제외). 이전 회차 자료와 기록에 나오는 `fct_order_settlement`는 같은 역할의 이전 이름입니다.
 
 Silver core와 Gold는 Silver 현재 상태를 읽어 다시 만듭니다. 4회차에서 본 것처럼 MERGE로 갱신하는 Silver는 append만 하는 테이블과 달리 새로 붙은 행만 골라 이어 읽기 어렵습니다. 그래서 이번 회차의 Silver core와 Gold는 가장 단순한 방법인 배치로 시작합니다. 정해진 주기마다 Silver 현재 상태 전체를 다시 읽어 테이블을 새로 만들고 공통 예제는 Gold 주기를 30분으로 가정합니다(설계, 7절). 바뀐 부분만 골라 반영하는 증분 방식은 6회차에서 무엇이 필요한지와 함께 다룹니다.
 
@@ -69,7 +69,7 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 | dbt가 대신 해 주는 일 | 공통 예제에서는 (코드) |
 |---|---|
 | SELECT만 쓰면 테이블·뷰 생성(materialization) | 모델 파일에 CREATE 문이 없고 모든 모델이 table(Iceberg) |
-| `ref`·`source`로 실행 순서와 계보(lineage) | Silver core(`dim_order`, `fct_payment`, `fct_refund`)를 먼저, Gold(fct → mart)를 나중에 실행 |
+| `ref`·`source`로 실행 순서와 계보(lineage) | Silver core(`dim_order`, `fct_payment`, `fct_refund`)를 먼저, Gold(주문 마트 → 일별 마트)를 나중에 실행 |
 | 테스트·설명을 SQL 옆에 | 데이터 테스트 15개(Silver core 9, Gold 6), `schema.yml`·`sources.yml`의 설명 |
 | Git 브랜치·리뷰·CI 흐름 | SQL과 테스트를 한 PR로 함께 리뷰 (8절) |
 | 증분 모델로 바뀐 부분만 반영 | 6회차 주제, 지금은 매번 전체 교체 |
@@ -81,7 +81,7 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 - dbt는 계산 엔진·스케줄러·수집 도구가 아닙니다. 계산은 Spark, 주기 실행은 Airflow(선택 프로필), 수집은 Flink가 맡습니다.
 - Jinja가 한 겹 끼어 있어서 실제로 실행된 SQL은 `target/compiled` 아래 컴파일 결과로 확인합니다.
 - 데이터 테스트는 테이블을 만든 다음에 검사합니다. 테스트가 실패하면 하류 모델은 SKIP되지만 테스트한 모델의 테이블은 이미 새 내용으로 바뀌어 있습니다(2절).
-- 다시 실행해도 같은 결과가 나오는지는 dbt가 아니라 모델을 어떻게 쓰느냐에 달려 있습니다. `fct_order_settlement`의 `mart_built_at`은 `current_timestamp()`로 채우기 때문에 실행할 때마다 바뀌고 숫자 열(paid·refunded·net_paid)은 Silver가 같으면 같습니다(코드).
+- 다시 실행해도 같은 결과가 나오는지는 dbt가 아니라 모델을 어떻게 쓰느냐에 달려 있습니다. `mart_order_settlement`의 `mart_built_at`은 `current_timestamp()`로 채우기 때문에 실행할 때마다 바뀌고 숫자 열(paid·refunded·net_paid)은 Silver가 같으면 같습니다(코드).
 - 엔진마다 어댑터가 따로 있고 지원 기능이 다릅니다. 공식 문서 기준으로 새로 설치할 때 기본값인 dbt v2(Rust 엔진)에서 Apache Spark 연결은 아직 Beta입니다. 이 과정은 v1 계열인 dbt-core 1.12.5와 dbt-spark 1.9.3을 씁니다(실측).
 - table 모델은 실행할 때마다 전체를 다시 쓰므로 데이터가 커지면 비용이 늘어납니다. 증분 모델로 바꾸려면 키와 늦게 도착한 데이터 처리까지 설계해야 합니다(6회차).
 
@@ -108,7 +108,7 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 | [`models/sources.yml`](../../dbt/models/sources.yml) | 원천 선언, Gold 모델 설명과 테스트 | Silver 현재 상태 세 테이블, Gold 테스트 다섯 개 |
 | [`models/silver/*.sql`](../../dbt/models/silver/) | Silver core 모델 | `dim_order`, `fct_payment`, `fct_refund` |
 | [`models/silver/schema.yml`](../../dbt/models/silver/schema.yml) | Silver core 설명과 테스트 | 테스트 아홉 개 |
-| [`models/*.sql`](../../dbt/models/) | Gold 모델 | `fct_order_settlement`, `mart_daily_settlement` |
+| [`models/*.sql`](../../dbt/models/) | Gold 모델 | `mart_order_settlement`, `mart_daily_settlement` |
 | [`tests/*.sql`](../../dbt/tests/settlement_balance.sql) | 규칙을 어긴 행을 찾는 SELECT | `settlement_balance` |
 
 모델 파일에는 CREATE 문이 없고 테이블로 만들지 뷰로 만들지는 materialization 설정이 정합니다. 실측(11/1): `Found 5 models, 15 data tests, 3 sources`.
@@ -122,7 +122,7 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 모델 SQL에는 테이블 이름 대신 함수를 씁니다.
 
 - `{{ source('silver','orders') }}`: `sources.yml`에 선언한 원천 테이블(Silver 현재 상태)입니다. `dim_order`를 컴파일하면 `from silver.orders`가 되고(실측 11/1), Spark 기본 카탈로그가 `lake`이므로 `lake.silver.orders`와 같은 테이블입니다.
-- `{{ ref('fct_payment') }}`: 다른 모델을 가리킵니다. Gold `fct_order_settlement`를 컴파일하면 `from silver.fct_payment`, `from silver.fct_refund`, `from silver.dim_order`가 됩니다(실측 11/1). ref로 연결해야 dbt가 실행 순서와 계보를 알 수 있습니다. 테이블 이름을 직접 쓰면 쿼리는 실행될 수 있어도 의존 관계가 끊깁니다.
+- `{{ ref('fct_payment') }}`: 다른 모델을 가리킵니다. Gold `mart_order_settlement`를 컴파일하면 `from silver.fct_payment`, `from silver.fct_refund`, `from silver.dim_order`가 됩니다(실측 11/1). ref로 연결해야 dbt가 실행 순서와 계보를 알 수 있습니다. 테이블 이름을 직접 쓰면 쿼리는 실행될 수 있어도 의존 관계가 끊깁니다.
 
 공통 파이프라인([`scripts/pipeline.py`](../../scripts/pipeline.py))은 Silver 현재 상태를 갱신한 뒤 `dbt build`를 실행합니다. `dbt build`는 `dbt run`을 모두 끝낸 다음 `dbt test`를 따로 돌리지 않고 의존 순서대로 모델을 실행한 뒤 바로 그 모델의 테스트를 실행합니다. 11/1 공통 환경에서는 이 순서로 실행됐습니다(실측).
 
@@ -130,12 +130,12 @@ dbt는 이미 들어온 데이터를 엔진 안에서 바꾸는 변환(T) 도구
 dim_order → 테스트 3개
 fct_payment → 테스트 3개 (relationships: order_id → dim_order 포함)
 fct_refund → 테스트 3개 (relationships: payment_id → fct_payment 포함)
-fct_order_settlement → 테스트 4개
+mart_order_settlement → 테스트 4개
 mart_daily_settlement → 테스트 2개
 Done. PASS=20 WARN=0 ERROR=0 SKIP=0
 ```
 
-상류 모델의 테스트가 실패하면 그 모델에 의존하는 하류 모델은 SKIP됩니다. 예를 들어 `fct_payment`의 unique 테스트가 실패하면 `fct_payment`를 ref로 읽는 `fct_refund`, `fct_order_settlement`, `mart_daily_settlement`는 다시 만들어지지 않고 이전 테이블이 그대로 남습니다. Silver core의 테스트가 Gold를 지키는 문 역할을 하는 셈입니다.
+상류 모델의 테스트가 실패하면 그 모델에 의존하는 하류 모델은 SKIP됩니다. 예를 들어 `fct_payment`의 unique 테스트가 실패하면 `fct_payment`를 ref로 읽는 `fct_refund`, `mart_order_settlement`, `mart_daily_settlement`는 다시 만들어지지 않고 이전 테이블이 그대로 남습니다. Silver core의 테스트가 Gold를 지키는 문 역할을 하는 셈입니다.
 
 그런데 테스트는 `fct_payment`를 만든 뒤에 실행되므로 `fct_payment`는 이미 새 내용으로 바뀐 상태입니다. 결국 Silver core 일부는 새 상태, Gold는 이전 상태로 남아 기준 시점이 어긋납니다. 남은 Gold도 최신이 아니므로 실패를 알리고 원인을 고쳐 다시 빌드하는 장치가 필요하며 이 부분은 8회차에서 운영과 함께 다룹니다. [dbt build](https://docs.getdbt.com/reference/commands/build)
 
@@ -162,7 +162,7 @@ Done. PASS=20 WARN=0 ERROR=0 SKIP=0
 | Silver core | `dim_order` | 주문 1건 | `order_id` |
 | Silver core | `fct_payment` | 결제 1건 | `payment_id` |
 | Silver core | `fct_refund` | 환불 1건 | `refund_id` |
-| Gold | `fct_order_settlement` | 주문 1건 | `order_id` |
+| Gold | `mart_order_settlement` | 주문 1건 | `order_id` |
 | Gold | `mart_daily_settlement` | 주문일 하루 | `order_date` |
 
 단위가 정해지면 unique라는 테스트 규칙이 생깁니다. Silver core에 가장 작은 입도(결제 1건, 환불 1건)를 두는 이유는 다시 묶기 쉽기 때문입니다. 주문 단위 정산, 일별 마트, 결제 상태별 실패 분석처럼 묶는 기준이 다른 마트도 같은 fact에서 만들 수 있습니다. Gold에서 바로 날짜별로 모으지 않고 주문 단위 테이블을 거치는 이유도 있습니다. 주문마다 `paid − refunded`가 맞는지 확인하기 쉽고 어느 날 숫자가 이상할 때 원인 주문을 되짚을 수 있습니다.
@@ -210,7 +210,7 @@ to_date(from_utc_timestamp(ordered_at,'Asia/Seoul')) order_date
 | 결제와 환불을 먼저 조인한 뒤 합계 | 결제 행이 2행으로 늘어 `sum(결제)=200,000` ✗ |
 | 결제는 결제끼리, 환불은 환불끼리 주문 단위로 먼저 합계한 뒤 주문 한 행에 붙임 | 결제 100,000, 환불 30,000, 순결제액 70,000 ✓ |
 
-Gold `fct_order_settlement`는 두 번째 방법을 씁니다. Silver core의 `fct_payment`와 `fct_refund`를 각각 주문별로 먼저 합친 뒤 `dim_order`에 붙입니다.
+Gold `mart_order_settlement`는 두 번째 방법을 씁니다. Silver core의 `fct_payment`와 `fct_refund`를 각각 주문별로 먼저 합친 뒤 `dim_order`에 붙입니다.
 
 ## 5. 코드 읽기
 
@@ -253,10 +253,10 @@ where not r.is_deleted
 
 ### Gold
 
-[`fct_order_settlement.sql`](../../dbt/models/fct_order_settlement.sql) 전체입니다.
+[`mart_order_settlement.sql`](../../dbt/models/mart_order_settlement.sql) 전체입니다.
 
 ```sql
--- Gold serving table: one row per order, built from the Silver core.
+-- Gold mart: one row per order, built from the Silver core (renamed from mart_order_settlement on 2026-11-01).
 -- Aggregate payments and refunds per order first to avoid join fan-out.
 with payments as (
   select order_id, sum(amount) paid
@@ -291,11 +291,11 @@ left join refunds r on o.order_id=r.order_id
 select order_date, count(*) order_count, sum(paid) paid,
        sum(refunded) refunded, sum(net_paid) net_paid,
        max(mart_built_at) mart_built_at
-from {{ ref('fct_order_settlement') }}
+from {{ ref('mart_order_settlement') }}
 group by order_date
 ```
 
-`ref`로 fct를 읽어 `order_date`별로 건수와 금액을 다시 합산합니다. fct가 이미 주문당 한 행이라 여기서는 조인 없이 더하기만 하면 되고 `mart_built_at`은 fct에 찍힌 생성 시각의 최댓값입니다.
+`ref`로 주문 마트를 읽어 `order_date`별로 건수와 금액을 다시 합산합니다. 주문 마트가 이미 주문당 한 행이라 여기서는 조인 없이 더하기만 하면 되고 `mart_built_at`은 주문 마트에 찍힌 생성 시각의 최댓값입니다.
 
 ## 6. 데이터 테스트
 
@@ -348,7 +348,7 @@ Gold 테스트 여섯 개 중 다섯 개는 [`sources.yml`](../../dbt/models/sou
 
 ```yaml
 models:
-  - name: fct_order_settlement
+  - name: mart_order_settlement
     columns:
       - name: order_id
         tests: [unique, not_null]
@@ -363,7 +363,7 @@ models:
 여섯 번째는 singular 테스트 [`tests/settlement_balance.sql`](../../dbt/tests/settlement_balance.sql)로, 규칙을 어긴 행을 찾는 SELECT이며 0행이면 통과입니다.
 
 ```sql
-select * from {{ ref('fct_order_settlement') }}
+select * from {{ ref('mart_order_settlement') }}
 where net_paid != paid-refunded or paid < 0 or refunded < 0
 ```
 
@@ -374,8 +374,8 @@ where net_paid != paid-refunded or paid < 0 or refunded < 0
 | Silver core | `fct_payment.order_id` relationships → `dim_order` | 결제가 남아 있는 주문을 가리킴 | 주문이 삭제됐는데 결제는 남은 이유 |
 | Silver core | `fct_refund.refund_id` unique·not_null | 환불당 한 행 | 금액이 맞는지 |
 | Silver core | `fct_refund.payment_id` relationships → `fct_payment` | 환불이 남아 있는 결제를 가리킴 | 환불이 결제보다 큰지 |
-| Gold | fct `order_id` unique·not_null, `order_date` not_null | 주문당 한 행, 날짜가 비지 않음 | 금액이 맞는지 |
-| Gold | mart `order_date` unique·not_null | 하루 한 행 | 합계가 맞는지 |
+| Gold | 주문 마트 `order_id` unique·not_null, `order_date` not_null | 주문당 한 행, 날짜가 비지 않음 | 금액이 맞는지 |
+| Gold | 일별 마트 `order_date` unique·not_null | 하루 한 행 | 합계가 맞는지 |
 | Gold | [`settlement_balance`](../../dbt/tests/settlement_balance.sql) | `net_paid = paid − refunded`, `paid`·`refunded` ≥ 0 | 조인으로 부푼 금액, 순결제액이 음수가 되는 초과 환불 |
 
 실측(11/1): `dbt build` → `PASS=20 WARN=0 ERROR=0 SKIP=0` (모델 5개 + 데이터 테스트 15개). 10/31에 Silver core 없이 모델 2개였을 때는 `dbt test`가 `PASS=6`이었습니다. 통과는 우리가 정의한 조건까지만 보장합니다.
@@ -397,7 +397,7 @@ status 값처럼 여러 마트가 함께 기대는 규칙은 Silver core에 테�
 
 ### 결과 읽기
 
-테스트 이름은 `테스트_모델_열` 형태로 만들어집니다(예: `unique_fct_order_settlement_order_id`). relationships 테스트는 대상까지 이름에 붙어 `relationships_fct_payment_order_id__order_id__ref_dim_order_`처럼 길어집니다(실측 11/1). 실패하면 실패한 행 수가 나오고 `dbt/target/compiled/` 아래에 컴파일된 테스트 SQL이 남는데 그 SQL을 직접 실행하면 어떤 행이 문제인지 볼 수 있습니다.
+테스트 이름은 `테스트_모델_열` 형태로 만들어집니다(예: `unique_mart_order_settlement_order_id`). relationships 테스트는 대상까지 이름에 붙어 `relationships_fct_payment_order_id__order_id__ref_dim_order_`처럼 길어집니다(실측 11/1). 실패하면 실패한 행 수가 나오고 `dbt/target/compiled/` 아래에 컴파일된 테스트 SQL이 남는데 그 SQL을 직접 실행하면 어떤 행이 문제인지 볼 수 있습니다.
 
 ## 7. table 모델과 갱신 주기
 
@@ -405,7 +405,7 @@ status 값처럼 여러 마트가 함께 기대는 규칙은 Silver core에 테�
 
 설치된 dbt-spark 1.9.3은 Iceberg 테이블이 이미 있으면 지우고 다시 만드는 대신 `create or replace table ... as select`로 테이블을 통째로 교체합니다. 그래서 교체하는 동안에도 테이블이 사라지지 않고 읽는 쪽은 교체 전이나 교체 후 한 상태만 봅니다. Silver core 세 모델과 Gold 두 모델이 모두 이렇게 만들어집니다. [materializations](https://docs.getdbt.com/docs/build/materializations), [Iceberg RTAS](https://iceberg.apache.org/docs/1.10.0/spark-ddl/#replace-table-as-select)
 
-실측(10/31): 공통 환경의 `lake.gold.fct_order_settlement`에는 snapshot이 모두 902개 있었고 최근 5개는 모두 `operation=overwrite`, `parent_id`가 비어 있었습니다. 11/1에 두 번 더 빌드한 뒤에는 904개였습니다(실측 11/1). table 설정에서는 바뀐 행이 없어도 실행할 때마다 테이블 전체를 교체합니다(설치된 코드로 확인한 동작이며 변경 없는 실행을 따로 비교하지는 않았습니다). 오래된 snapshot 정리는 7회차에서 다룹니다. 이 관찰은 공통 환경에서 본 것이므로 모든 버전·설정의 일반 법칙으로 넓히지 않습니다.
+실측(10/31): 공통 환경의 주문 단위 Gold 테이블(당시 이름 `lake.gold.fct_order_settlement`)에는 snapshot이 모두 902개 있었고 최근 5개는 모두 `operation=overwrite`, `parent_id`가 비어 있었습니다. 11/1에 두 번 더 빌드한 뒤에는 904개였고, 같은 날 이름을 `mart_order_settlement`로 바꾼 뒤로는 새 테이블에 snapshot이 다시 쌓입니다(실측 11/1: 첫 빌드 뒤 1개). table 설정에서는 바뀐 행이 없어도 실행할 때마다 테이블 전체를 교체합니다(설치된 코드로 확인한 동작이며 변경 없는 실행을 따로 비교하지는 않았습니다). 오래된 snapshot 정리는 7회차에서 다룹니다. 이 관찰은 공통 환경에서 본 것이므로 모든 버전·설정의 일반 법칙으로 넓히지 않습니다.
 
 ### 얼마나 자주 다시 만들까요
 
@@ -469,7 +469,7 @@ models:
 `source`·`ref`가 실제 테이블 이름으로 바뀐 SQL:
 
 ```bash
-./scripts/lab.sh exec -T runner dbt compile --select fct_order_settlement --project-dir dbt --profiles-dir dbt
+./scripts/lab.sh exec -T runner dbt compile --select mart_order_settlement --project-dir dbt --profiles-dir dbt
 ```
 
 데이터 테스트 실행(조회만 함):
@@ -490,16 +490,16 @@ Gold 일별 마트 조회:
 ./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "SELECT * FROM lake.gold.mart_daily_settlement ORDER BY order_date"
 ```
 
-Gold fct 테이블의 snapshot 수:
+Gold 주문 마트의 snapshot 수:
 
 ```bash
-./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "SELECT COUNT(*) FROM lake.gold.fct_order_settlement.snapshots"
+./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "SELECT COUNT(*) FROM lake.gold.mart_order_settlement.snapshots"
 ```
 
-Gold fct 테이블의 최근 snapshot 5개(어떤 작업으로 생겼는지):
+Gold 주문 마트의 최근 snapshot 5개(어떤 작업으로 생겼는지):
 
 ```bash
-./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "SELECT committed_at, operation, parent_id FROM lake.gold.fct_order_settlement.snapshots ORDER BY committed_at DESC LIMIT 5"
+./scripts/lab.sh exec -T runner python scripts/pipeline.py --sql "SELECT committed_at, operation, parent_id FROM lake.gold.mart_order_settlement.snapshots ORDER BY committed_at DESC LIMIT 5"
 ```
 
 기대하는 출력은 이렇습니다. 목록에 모델 5개(Silver core 3개, Gold 2개)·원천 3개·테스트 15개가 보이고 compile 결과에 `from silver.fct_payment`, `from silver.fct_refund`, `from silver.dim_order`가 보입니다(실측 11/1). 테스트는 15개가 실행되고 공통 환경 11/1 빌드에서는 모두 통과했습니다. 최근 snapshot의 `operation`은 공통 환경에서 `overwrite`였고 행 수·날짜·snapshot 수는 환경마다 다릅니다. 테이블이 없다는 오류가 나면 위의 '먼저 확인할 것'을 다시 보고, 그래도 안 되면 오류와 마지막 명령을 남겨 질문해 주세요. 결과를 맞추려고 테이블이나 볼륨을 지우지는 않습니다.

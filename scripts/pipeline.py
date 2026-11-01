@@ -68,6 +68,10 @@ def main():
     if args.sql:
         print(json.dumps(query(cursor,args.sql),default=str,ensure_ascii=False))
         return
+    from scripts.flink_state import legacy_layout_pending
+    if legacy_layout_pending():
+        raise RuntimeError("Bronze is still the single table lake.bronze.cdc_events. Run "
+                           "./scripts/migrate-bronze-per-topic.sh once (docs/operations.md) before refreshing Silver.")
     if args.wait:
         for _ in range(90):
             try:

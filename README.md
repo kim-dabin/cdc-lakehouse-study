@@ -44,6 +44,8 @@ Linux ARM 컨테이너를 실행할 Docker 환경이 필요합니다. 저장소�
 
 S3 저장소는 MinIO에서 이어진 커뮤니티 포크 [SILO](https://github.com/pgsty/silo)를 사용합니다. 공개 다운로드가 중단된 `quay.io/minio/*` 대신 `pgsty/silo`와 `pgsty/mc`의 검증된 버전·이미지 해시를 고정했습니다. 실습의 서비스 이름(`minio`), 접속 주소, 계정 설정과 `warehouse` 버킷은 동일합니다. 이전 설치에서 `unauthorized`가 발생했다면 저장소를 업데이트하고 `./scripts/bootstrap.sh`를 다시 실행합니다. Docker 설정 파일 초기화나 데이터 볼륨 삭제는 필요하지 않습니다.
 
+2026-11-01부터 공통 Bronze는 Kafka 토픽마다 테이블 하나(`lake.bronze.orders`·`lake.bronze.payments`·`lake.bronze.refunds`)입니다. 이 날짜 전에 만든 개인 환경은 코드를 받은 뒤 `./scripts/migrate-bronze-per-topic.sh`를 한 번 실행합니다. 기존 `lake.bronze.cdc_events`의 이력을 옮기고 수집 작업을 새 구성으로 바꿉니다. 절차와 되돌리기는 [환경 운영 안내](docs/operations.md#bronze-토픽별-테이블-전환-기존-환경-1회)에 있습니다. 전환 전에는 수집 작업 재시작과 Silver 갱신이 이 안내와 함께 멈춥니다.
+
 bootstrap은 전체 예제 환경을 준비하며 Silver·Gold/dbt 작업도 실행합니다. 1–3회차의 수집·적재 학습 범위는 원천 변경부터 Bronze까지이며, Silver·Gold 모델 구현은 후속 회차에서 다룹니다.
 
 초기 기준값은 2026-10-01 주문 한 건, 결제 100,000원입니다. 마트의 `net_paid`는 **주문일 기준 결제 성공액 − 환불 성공액**이며 회계상 매출을 의미하지 않습니다.

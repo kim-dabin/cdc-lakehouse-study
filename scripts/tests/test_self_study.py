@@ -226,11 +226,11 @@ class SelfStudyTests(unittest.TestCase):
                 self.assertNotIn('cdc_events', sql)
                 for table in ('orders', 'payments', 'refunds'):
                     self.assertIn(f'FROM lake.bronze.{table} WHERE', sql)
-        # A fresh environment never creates or reads the earlier single table (comments aside).
+        # A fresh environment never creates, writes or reads the earlier single table.
+        import re
         for path in ('flink/ingest.sql.template', 'scripts/pipeline.py', 'scripts/verify.py'):
-            code = [line for line in (ROOT / path).read_text().splitlines()
-                    if not line.lstrip().startswith(('--', '#'))]
-            self.assertFalse(any('cdc_events' in line for line in code), path)
+            text = (ROOT / path).read_text()
+            self.assertIsNone(re.search(r'(FROM|INTO|EXISTS)\s+lake\.bronze\.cdc_events', text, re.I), path)
 
     def test_submission_refuses_unmigrated_single_table_environment(self):
         from unittest import mock

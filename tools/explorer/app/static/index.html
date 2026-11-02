@@ -65,12 +65,22 @@ const examples=[
  ['Gold 일별 마트','SELECT * FROM lake.gold.mart_daily_settlement ORDER BY order_date'],
  ['테이블 상세','DESCRIBE TABLE EXTENDED lake.gold.mart_order_settlement'],
  ['주문 마트 스냅샷','SELECT committed_at, snapshot_id, parent_id, operation FROM lake.gold.mart_order_settlement.snapshots ORDER BY committed_at DESC LIMIT 10'],
- ['쌓인 스냅샷 (이전 이름)','SELECT committed_at, snapshot_id, parent_id, operation FROM lake.gold.fct_order_settlement.snapshots ORDER BY committed_at DESC LIMIT 10'],
- ['쌓인 스냅샷 수 (이전 이름)','SELECT count(*) AS snapshots, min(committed_at) AS first_at, max(committed_at) AS last_at FROM lake.gold.fct_order_settlement.snapshots'],
  ['환불 데이터 파일','SELECT file_path, record_count, file_size_in_bytes FROM lake.silver.refunds.files'],
  ['환불 매니페스트','SELECT * FROM lake.silver.refunds.manifests'],
  ['환불 메타데이터 이력','SELECT * FROM lake.silver.refunds.metadata_log_entries'],
- ['환불 스냅샷 이력','SELECT * FROM lake.silver.refunds.history']
+ ['환불 스냅샷 이력','SELECT * FROM lake.silver.refunds.history'],
+ ["6회차 · s2 주문별 Gold", "SELECT * FROM lake.lesson06.s06_demo_s2_gold_order ORDER BY order_id"],
+ ["6회차 · s3 주문별 Gold · o1 환불 정정", "SELECT * FROM lake.lesson06.s06_demo_s3_gold_order ORDER BY order_id"],
+ ["6회차 · s3 키·날짜 계획", "SELECT range_id, ranges_json, keys_json, dates_json, saved_at FROM lake.lesson06.s06_demo_s3_plan ORDER BY saved_at, range_id"],
+ ["6회차 · s3 성공 snapshot", "SELECT input_table, snapshot_id FROM lake.lesson06.s06_demo_s3_progress ORDER BY input_table"],
+ ["6회차 · s5 원본 changes · o2 carry-over", "SELECT _change_type, _change_ordinal, _commit_snapshot_id, order_id, ordered_at, source_lsn FROM lake.lesson06.s06_demo_s5_orders.changes ORDER BY _change_ordinal, order_id, _change_type"],
+ ["6회차 · s5 파일 재작성 snapshot", "SELECT committed_at, snapshot_id, parent_id, operation, summary['added-data-files'] added_data_files, summary['deleted-data-files'] deleted_data_files FROM lake.lesson06.s06_demo_s5_orders.snapshots ORDER BY committed_at, snapshot_id"],
+ ["6회차 · s5 현재 데이터 파일", "SELECT file_path, record_count FROM lake.lesson06.s06_demo_s5_orders.files ORDER BY file_path"],
+ ["6회차 · s4 일별 Gold · 환불 삭제", "SELECT * FROM lake.lesson06.s06_demo_s4_gold_daily ORDER BY order_date"],
+ ["6회차 · s5 일별 Gold · 날짜 소급 정정", "SELECT * FROM lake.lesson06.s06_demo_s5_gold_daily ORDER BY order_date"],
+ ["6회차 · s6 정상 일별 Gold", "SELECT * FROM lake.lesson06.s06_demo_s6_gold_daily ORDER BY order_date"],
+ ["6회차 · s6 naive 일별 Gold", "SELECT * FROM lake.lesson06.s06_demo_naive_gold_daily ORDER BY order_date"],
+ ["6회차 · s6 naive와 전체 재계산 차이", "WITH dim_order AS (\nSELECT order_id, ordered_at,\n       to_date(from_utc_timestamp(ordered_at, 'Asia/Seoul')) order_date, status\nFROM lake.lesson06.s06_demo_naive_orders WHERE NOT is_deleted\n),\nfct_payment AS (\nSELECT payment_id, order_id, amount, status\nFROM lake.lesson06.s06_demo_naive_payments WHERE NOT is_deleted\n),\nfct_refund AS (\nSELECT r.refund_id, r.payment_id, p.order_id, r.amount, r.status,\n       p.status payment_status\nFROM lake.lesson06.s06_demo_naive_refunds r LEFT JOIN fct_payment p ON r.payment_id=p.payment_id\nWHERE NOT r.is_deleted\n),\nfull_order AS (\nWITH payments AS (\n  SELECT order_id, sum(amount) paid FROM fct_payment\n  WHERE status='success' GROUP BY order_id\n), refunds AS (\n  SELECT order_id, sum(amount) refunded FROM fct_refund\n  WHERE status='success' AND payment_status='success' GROUP BY order_id\n)\nSELECT o.order_id, o.order_date,\n       coalesce(p.paid,0) paid, coalesce(r.refunded,0) refunded,\n       coalesce(p.paid,0)-coalesce(r.refunded,0) net_paid\nFROM dim_order o\nLEFT JOIN payments p ON o.order_id=p.order_id\nLEFT JOIN refunds r ON o.order_id=r.order_id\n),\nfull_daily AS (\nSELECT order_date, count(*) order_count, sum(paid) paid,\n       sum(refunded) refunded, sum(net_paid) net_paid\nFROM full_order GROUP BY order_date\n),\nactual_minus_full AS (SELECT order_date, order_count, paid, refunded, net_paid FROM lake.lesson06.s06_demo_naive_gold_daily EXCEPT SELECT order_date, order_count, paid, refunded, net_paid FROM full_daily),\nfull_minus_actual AS (SELECT order_date, order_count, paid, refunded, net_paid FROM full_daily EXCEPT SELECT order_date, order_count, paid, refunded, net_paid FROM lake.lesson06.s06_demo_naive_gold_daily)\nSELECT 'actual_minus_full' difference, order_date, order_count, paid, refunded, net_paid FROM actual_minus_full\nUNION ALL\nSELECT 'full_minus_actual' difference, order_date, order_count, paid, refunded, net_paid FROM full_minus_actual\nORDER BY order_date, difference"]
 ];
 examples.forEach(([name,sql])=>{const b=button(name,()=>{$('editor').value=sql;$('editor').focus();});b.title=sql;$('examples').append(b);});
 let recent=[];try{const saved=JSON.parse(localStorage.getItem('explorer.sql.history')||'[]');if(Array.isArray(saved))recent=saved.filter(x=>typeof x==='string').slice(0,20);}catch{}

@@ -42,7 +42,7 @@ Spark에서는 `not_null` 같은 제약 조건이 강제되지 않는다(dbt-spa
 
 ## 확인한 결과 (2026-11-01 공통 환경 실측)
 
-- 메타데이터 수집 18건, dbt 수집 43건, 모두 성공.
+- 메타데이터 수집 18건, dbt 수집 24건, 모두 성공.
 - 데이터 계약 5개(Silver core 3, Gold 2) 검증 `Success`. 예: `silver.fct_payment` schema 4/4, semantics 1/1.
 - 열 단위 리니지 예:
   - `silver.orders.ordered_at` → `silver.dim_order.order_date`, `ordered_at`

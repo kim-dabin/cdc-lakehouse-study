@@ -4,7 +4,7 @@
 
 이번 회차는 두 부분으로 이어집니다. 앞부분에서는 5회차 끝에 설계로만 봤던 **dbt 모델 계약**을 모델 다섯 개에 적용해 합의 없는 열 이름·타입 변경을 빌드 전에 막고, **OpenMetadata 컬럼 리니지**로 금액·날짜 열이 어느 마트까지 흘러가는지 확인합니다. 뒷부분에서는 그 열 계보 위에 **행 단위 증분 범위**를 얹어, 고정 입력 여섯 시나리오(신규·수정·환불 철회·과거 주문일 정정·중간 실패 후 같은 범위 재시도)에서 전체 재계산과 일치하는 Gold 증분 갱신을 확인하고 실제 운영 판단 기준까지 연결합니다.
 
-수업 중에는 미리 준비된 데모 테이블을 Lakehouse Explorer로 열어 보며 SQL과 결과를 예측하고 내 도메인의 키 전파 경로를 정리합니다. 집에서는 [6절](#6-집에서-따라-하기) 안내에 따라 개인 Docker 환경에서 같은 실험을 실행할 수 있습니다. 새로 작성해서 제출할 파일은 없으며 과제 형식과 기한은 별도 공지를 따릅니다.
+수업 중에는 미리 준비된 데모 테이블을 Lakehouse Explorer와 OpenMetadata 화면으로 열어 보며 SQL과 결과를 예측하고 내 도메인의 키 전파 경로를 정리합니다. 집에서는 [6절](#6-집에서-따라-하기) 안내에 따라 개인 Docker 환경에서 같은 실험을 실행할 수 있습니다. 새로 작성해서 제출할 파일은 없으며 과제 형식과 기한은 별도 공지를 따릅니다.
 
 이 가이드에서 쓰는 표시는 네 가지입니다.
 
@@ -121,9 +121,7 @@ CALL lake.system.create_changelog_view(
 3. **`s5` `o1` 주문일 정정**: `o1`이 들어 있던 2행 파일이 Copy-on-Write로 다시 써지면서 `overwrite` 스냅샷(`added-data-files = 1`, `deleted-data-files = 1`)이 생기고 현재 데이터 파일은 1행 파일(`o3`)과 새로 써진 2행 파일(`o1`·`o2`) 두 개가 됩니다.
 4. **원본 `.changes` 대 `create_changelog_view` 비교**: 원본 메타데이터 테이블 `orders.changes`의 `s5` 커밋(`_change_ordinal = 2`)에는 실제 변경된 `o1`의 `DELETE`·`INSERT`(LSN `100` → `500`) 2행뿐 아니라, 값 변화 없이 새 파일로 그대로 복사된 `o2`의 `DELETE`·`INSERT`(같은 스냅샷, 같은 주문 시각 `2026-11-02 01:00:00`, `source_lsn = 100` 그대로) 2행까지 **총 4행**(`raw_rows = 4`, `raw_keys = ['o1', 'o2']`)이 나타납니다. 반면 `create_changelog_view` 결과는 carry-over인 `o2`를 제거하고 `o1` **2행**(`changelog_rows = 2`, `changelog_keys = ['o1']`, `carryover_keys = ['o2']`)만 남깁니다.
 
-엔진 버전과 관련된 실제 함정도 확인했습니다. 공통 환경(Spark 3.5.6, Iceberg 1.10.0)에서 `.changes` 테이블에 `_commit_snapshot_id IN (서브쿼리)` 조건을 걸거나 `_change_ordinal` 없이 `_commit_snapshot_id`만 선택하면 `ClassCastException`이 발생했고, `_change_ordinal`과 `_commit_snapshot_id`를 함께 선택한 뒤 스냅샷 ID로 걸러 내면 정상 동작했습니다(공통 환경 실측 2026-11-02, 코드: `lab.py` 217~221행). 문서 설명만 믿지 않고 작은 고정 입력으로 먼저 동작을 검증해야 하는 이유입니다.
-
-또한 실행기는 `VERSION AS OF start`와 `VERSION AS OF end`를 직접 `FULL OUTER JOIN`(`<=>` 비교)해 구한 `time_travel_keys`와 `changelog_keys`를 매 단계 교차 검증합니다(`lab.py` 195~232행 `crosscheck`). 공통 환경 실측(2026-11-02)에서 데모 6세트 전 구간 불일치 0건으로 일치했습니다. 대용량 운영에서는 매 주기 전체 조인이 비싸므로 엔진 업그레이드나 회귀 테스트용 안전장치로 활용합니다(설계).
+엔진 버전과 관련된 실제 함정도 확인했습니다. 공통 환경(Spark 3.5.6, Iceberg 1.10.0)에서 `.changes` 테이블에 `_commit_snapshot_id IN (서브쿼리)` 조건을 걸거나 `_change_ordinal` 없이 `_commit_snapshot_id`만 선택하면 `ClassCastException`이 발생했고, `_change_ordinal`과 `_commit_snapshot_id`를 함께 선택한 뒤 스냅샷 ID로 걸러 내면 정상 동작했습니다(공통 환경 실측 2026-11-02, 코드: `lab.py` 217~221행). 문서 설명만 믿지 않고 작은 고정 입력으로 먼저 동작을 검증해야 하는 이유입니다. (`VERSION AS OF` 교차 검증 쿼리는 [더 알아보기](#더-알아보기) 절에서 다룹니다.)
 
 ## 3. 영향 범위: 키 전파와 과거 날짜 이동
 
@@ -141,7 +139,7 @@ UNION SELECT p.order_id
 ```
 
 - 환불이 철회(`is_deleted = true`)되어 `fct_refund`에서 빠지더라도, 삭제를 거르기 전인 `changes_refunds`에서 변경을 읽고 결제가 보존된 `input_payments`와 조인하므로 `order_id`가 누락되지 않습니다.
-- 영향 키가 정해지면 차액(delta)만 가감하지 않고, 그 주문의 현재 유효 결제·환불 전체를 5회차와 같은 식([`sql/01-core.sql`](sql/01-core.sql), [`sql/02-full.sql`](sql/02-full.sql))으로 다시 합산합니다. (대용량 환경에서는 `affected_keys`에 속한 주문·결제·환불만 먼저 걸러 같은 합산 식을 적용합니다 — 설계.)
+- 영향 키가 정해지면 차액(delta)만 가감하지 않고, 그 주문의 현재 유효 결제·환불 전체를 5회차와 같은 식([`sql/01-core.sql`](sql/01-core.sql), [`sql/02-full.sql`](sql/02-full.sql))으로 다시 합산합니다. 차액만 더하고 빼면 결제 상태 변경·환불 철회·재시도가 겹칠 때 부호 분기가 복잡해지고 한 번만 어긋나도 누적 금액이 틀어지지만, 주문 단위 전체 재합산은 같은 범위를 다시 실행해도 결과가 흔들리지 않습니다. (대용량 환경에서는 `affected_keys`에 속한 주문·결제·환불만 먼저 걸러 같은 합산 식을 적용합니다 — 설계.)
 
 ### 과거 날짜 정정과 영향 날짜(`affected_dates`)
 
@@ -197,11 +195,11 @@ VALUES (s.order_date,s.order_count,s.paid,s.refunded,s.net_paid)
 
 ### `plan`·`progress` 저장 순서와 실무 운영 기준
 
-Iceberg 커밋은 한 테이블 안에서만 원자적이며 여러 테이블을 하나의 트랜잭션으로 묶지 않습니다([Iceberg Reliability](https://iceberg.apache.org/docs/1.10.0/reliability/)). 실행기는 ①입력 스냅샷 범위(`ranges`) 해시로 `range_id` 생성 ②`gold_order` 쓰기 **전에** `plan` 테이블에 `(range_id, ranges_json, keys_json, dates_json)` 저장(같은 `range_id` 재시도 시 `reused: true`로 재사용) ③`gold_order`·`gold_daily` 순서로 MERGE ④두 MERGE가 **모두 성공한 뒤에만** `progress` 갱신 순서를 지킵니다(코드: `lab.py` 239~297행). 실제 운영으로 옮길 때는 다음 세 가지를 함께 설계합니다.
+Iceberg 커밋은 한 테이블 안에서만 원자적이며 여러 테이블을 하나의 트랜잭션으로 묶지 않습니다([Iceberg Reliability](https://iceberg.apache.org/docs/1.10.0/reliability/)). 실행기는 ①입력 스냅샷 범위(`ranges`) 해시로 `range_id` 생성 ②`gold_order` 쓰기 **전에** `plan` 테이블에 `(range_id, ranges_json, keys_json, dates_json)` 저장(같은 `range_id` 재시도 시 `reused: true`로 재사용) ③`gold_order`·`gold_daily` 순서로 MERGE ④두 MERGE가 **모두 성공한 뒤에만** `progress` 갱신 순서를 지킵니다(코드: `lab.py` 239~297행). 실제 운영으로 옮길 때는 다음 사항을 함께 설계합니다.
 
 - **중단된 실행 감지(코드·설계)**: `plan`에는 새 구간 행이 저장돼 있는데 `progress`의 `snapshot_id`가 이전 값 그대로라면 두 마트 갱신 도중 실패한 상태입니다. 8회차에서 다룰 Airflow 작업 재시도가 오늘 `s6`의 "같은 범위 다시 실행"과 같은 문제를 풉니다(설계).
 - **`progress`와 스냅샷 만료(문서·설계)**: `progress`에 기록된 마지막 성공 `snapshot_id`가 유지 관리(`expire_snapshots`)로 만료되면 그 스냅샷부터는 time travel이나 changelog 읽기를 이어 갈 수 없습니다([Iceberg 1.10.0 Maintenance](https://iceberg.apache.org/docs/1.10.0/maintenance/): 만료된 스냅샷은 time travel에 사용할 수 없음). 따라서 스냅샷 보존 기간을 최대 장애 복구 기간보다 길게 두거나, 만료 시 전체 재계산으로 복구하는 비상 경로를 함께 마련합니다(설계 — 7회차 유지 관리로 연결).
-- **실패 뒤 재시도 전에 새 변경이 들어오면(설계·미실측)**: 재시도 전에 입력 테이블에 새 커밋이 들어오면 끝 스냅샷이 바뀌어 이전 `plan`을 재사용하지 못합니다. 코드에서는 넓어진 구간의 `changes_orders`에서 `UPDATE_BEFORE`·`DELETE`로 옛 날짜를 잡도록 작성해 두었으나(`lab.py` 264~266행), 실패와 재시도 사이에 새 입력이 끼어드는 시나리오는 이번 실습에서 실측하지 않았으므로 별도 검증이나 미완료 `plan` 우선 복구 설계가 필요합니다(설계).
+- **재시도 전에 새 변경이 들어오는 경우(설계·미실측)**: 실패와 재시도 사이에 입력 테이블에 새 스냅샷이 추가되는 조건과 방어 설계는 [더 알아보기](#더-알아보기) 절에서 다룹니다.
 
 ### dbt `incremental` 모델과의 세부 비교
 
@@ -245,7 +243,7 @@ Iceberg 커밋은 한 테이블 안에서만 원자적이며 여러 테이블을
 
 ### 먼저 확인할 것
 
-명령은 **개인 컴퓨터의 저장소 루트**에서 실행합니다. 원격 서버에 접속하지 않습니다. 최신 코드를 받은 뒤 기본 컨테이너 스택(Spark Thrift Server, Iceberg 카탈로그 DB, MinIO, `runner`)이 실행 중인지 확인합니다([개인 공통 실행 안내](../../docs/self-study.md), [환경 운영 안내](../../docs/operations.md)).
+명령은 **개인 컴퓨터의 저장소 루트**에서 실행합니다. 최신 코드를 받은 뒤 기본 컨테이너 스택(Spark Thrift Server, Iceberg 카탈로그 DB, MinIO, `runner`)이 실행 중인지 확인합니다([개인 공통 실행 안내](../../docs/self-study.md), [환경 운영 안내](../../docs/operations.md)).
 
 ```bash
 git pull --ff-only
@@ -317,7 +315,35 @@ RUN_NAIVE="s06-naive-$(date +%Y%m%d-%H%M%S)"
 ./governance/contract-failure-demo.sh
 ```
 
-`This model has an enforced contract that failed`와 `amount | BIGINT_TYPE | STRING_TYPE | data type mismatch`가 출력되고 원본 `dbt/` 폴더와 기존 `lake.silver.fct_payment` 테이블은 바뀌지 않습니다. OpenMetadata까지 띄워 브라우저(`http://localhost:28585`)로 보려면(추가 메모리 약 3 GiB, 수집 이미지 약 7.7 GB 필요) [`docs/governance.md`](../../docs/governance.md)의 절차를 따릅니다.
+`This model has an enforced contract that failed`와 `amount | BIGINT_TYPE | STRING_TYPE | data type mismatch`가 출력되고 원본 `dbt/` 폴더와 기존 `lake.silver.fct_payment` 테이블은 바뀌지 않습니다.
+
+### ④ OpenMetadata 켜고 리니지·데이터 계약 확인하기 (선택)
+
+OpenMetadata는 선택 실행 스택입니다([`docs/governance.md`](../../docs/governance.md)). 메모리는 OM 서버·검색·DB를 합쳐 약 **3 GB**를 더 쓰며(공통 환경 실측 2026-11-01: 서버 1.3 GiB, Elasticsearch 1.4 GiB, DB 0.2 GiB), 수집 이미지(`openmetadata/ingestion:2.0.5`)는 **7.7 GB**이므로 실행 전에 메모리와 디스크 여유를 먼저 확인합니다. 또한 Spark Thrift가 단일 세션(`singleSession=true`)을 공유하므로 수업 중에는 수집을 돌리지 않고, 집에서 개인 환경으로 실습할 때 실행합니다.
+
+```bash
+# 1. 기본 스택이 떠 있는 상태에서 OM을 켠다 (처음에는 이미지 내려받기에 몇 분 걸린다)
+./scripts/lab.sh -f compose.yaml -f compose.governance.yaml --profile governance up -d om-server
+
+# 2. dbt build → 테이블 메타데이터 → dbt 수집 → 데이터 계약 → 리니지 확인
+./scripts/governance.sh            # 마지막 dbt 결과를 그대로 쓰려면 --no-build
+
+# 3. 브라우저: http://localhost:28585  (admin@open-metadata.org / admin, 로컬 실습용 기본값)
+```
+
+원격 컴퓨터에서 실행 중이면 `ssh -N -L 28585:127.0.0.1:28585 <host>`로 터널을 연 뒤 접속합니다(`admin` / `admin`은 로컬 실습 기본값이므로 외부에 포트를 열지 않습니다).
+
+브라우저에서 로그인한 뒤 다음 순서로 확인합니다.
+
+1. **테이블 열기**: 상단 검색창에서 `mart_order_settlement`를 선택하거나 `http://localhost:28585/table/cdc_lakehouse.default.gold.mart_order_settlement/lineage` 주소로 바로 이동합니다(서비스 `cdc_lakehouse` 아래 `cdc_lakehouse.default.gold.mart_order_settlement`로 표시됩니다).
+2. **컬럼 리니지 확인 (`Lineage` 탭)**: **Lineage** 탭을 연 뒤 각 테이블 상자 안의 **열(Columns) 목록을 펼쳐야** `silver.fct_payment.amount` → `paid`, `net_paid` 같은 열 단위 연결선이 보입니다.
+3. **데이터 계약과 테스트 결과 확인**: 같은 테이블 화면의 **Contract**(데이터 계약) 탭에서 dbt 모델 계약으로 등록된 스키마·설명 검증 결과(`Success`)를 보고, **Data Quality**(Profiler & Data Quality) 탭에서 dbt 데이터 테스트 통과 결과를 확인합니다.
+
+실습을 마친 뒤 OpenMetadata 컨테이너를 중지하려면 아래 명령을 실행합니다.
+
+```bash
+./scripts/lab.sh -f compose.yaml -f compose.governance.yaml --profile governance stop om-server om-search om-db
+```
 
 ### 명령별 목적과 출력 읽는 법
 
@@ -356,6 +382,32 @@ RUN_NAIVE="s06-naive-$(date +%Y%m%d-%H%M%S)"
 | ⑤ 정기 전체 재계산 대조 | 기준 계산(full) 쿼리와 양방향 `EXCEPT` 0건을 확인할 다섯 시나리오 및 운영 중 정기 대조 주기 |
 
 과제 형식과 기한은 별도 공지를 따릅니다.
+
+## 더 알아보기
+
+### Time Travel 교차 검증으로 변경 키 대조하기 (실측·코드·설계)
+
+실험기(`lab.py` 195~232행 `crosscheck`)는 `create_changelog_view` 프로시저가 내놓은 변경 키만 믿지 않고, `start` 시점과 `end` 시점 스냅샷을 `VERSION AS OF`로 불러 직접 `FULL OUTER JOIN`한 뒤 null-safe 비교(`<=>`)로 실제 값이 달라진 키(`time_travel_keys`)를 뽑아 매 단계 대조합니다(코드).
+
+```sql
+WITH b AS (SELECT * FROM {target} VERSION AS OF {start}),
+     a AS (SELECT * FROM {target} VERSION AS OF {end})
+SELECT coalesce(b.order_id, a.order_id) changed_key
+FROM b FULL OUTER JOIN a ON b.order_id = a.order_id
+WHERE b.order_id IS NULL OR a.order_id IS NULL OR NOT (b.col <=> a.col ...)
+```
+
+- **공통 환경 실측(2026-11-02)**: `s2`(`append`)에서는 두 방식 모두 `['o3']`만 나왔고, `s5`·`s6`처럼 파일이 Copy-on-Write로 재작성되어 `o2` carry-over가 생긴 구간에서도 두 방식 모두 `o2`를 제외하고 `['o1']`만 내놓아 데모 6세트 전 단계에서 불일치 0건으로 일치했습니다.
+- **운영에서의 활용(설계)**: 대용량 테이블에서 매 주기 전체 스냅샷 두 개를 조인하는 것은 비용이 크므로, 상시 운영 경로보다는 Spark·Iceberg 엔진 버전을 올리거나 고정 입력 회귀 테스트를 실행할 때의 검증 안전장치로 활용합니다.
+
+### 실패 뒤 재시도 전에 새 변경이 들어오면 (설계·미실측)
+
+`s6`에서 실측한 복구는 **1차 실패 직후 입력 테이블에 새 커밋이 들어오기 전에** 같은 `(start, end)` 스냅샷 구간을 바로 재시도해 저장된 `plan`을 그대로 재사용(`reused: true`)한 결과입니다(실측·코드).
+
+만약 실제 운영 중에 1차 시도가 `gold_order`만 갱신하고 멈춘 사이 상류 Silver MERGE가 한 번 더 돌아 입력 테이블의 최신 스냅샷이 `end2`로 이동하면, `(start, end2)` 구간으로 바뀌어 새로운 `range_id`가 만들어지고 이전 `plan`은 재사용되지 않습니다(코드: `lab.py` 239~274행).
+
+- **코드에 넣어 둔 방어선과 미실측 한계(설계·미실측)**: `plan`을 재사용하지 못하더라도 넓어진 `(start, end2)` 구간의 `changes_orders`에서 `UPDATE_BEFORE`와 `DELETE` 행의 날짜를 읽어 이전 날짜를 놓치지 않도록 작성해 두었습니다. 다만 실패와 재시도 사이에 같은 키가 연속으로 수정되거나 삭제되는 복합 시나리오는 이번 실습에서 아직 실측하지 않았습니다(설계·미실측).
+- **운영 적용 전 권장 대안(설계·미실측)**: 미완료 `plan`(`progress`보다 앞선 구간 계획)이 남아 있을 때는 새 최신 스냅샷(`end2`)으로 바로 넓히지 않고, 남아 있는 미완료 `plan`의 `ranges_json` 구간을 먼저 끝까지 실행해 `progress`를 맞춘 뒤 다음 스냅샷 구간으로 넘어가는 복구 절차를 두거나 별도 고정 입력 시나리오로 검증하는 것이 안전합니다.
 
 ## 참고 문서
 

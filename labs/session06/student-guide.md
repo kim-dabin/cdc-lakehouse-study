@@ -252,6 +252,14 @@ Iceberg 커밋은 한 테이블 안에서만 원자적이며 여러 테이블을
 | 재시도 뒤 `gold_order` | 전체 계산과 일치 (`0 / 0`) | 전체 계산과 일치 (`0 / 0`) |
 | 재시도 뒤 `gold_daily` | **`2026-10-28` 행 잔류 (`actual_minus_full = 1`, 불일치)** | `2026-10-28` 행 삭제 완료, 전체 계산과 일치 (`0 / 0`) |
 
+### Airflow 30분 주기 스케줄과 멱등성 (코드·문서·설계)
+
+같은 입력 범위를 몇 번 다시 실행해도 결과가 같게 나오는 성질을 **멱등성(idempotency)**이라고 합니다. Airflow 2.10.5 공식 문서는 태스크를 데이터베이스 트랜잭션처럼 다루고 재시도마다 같은 결과를 내도록 INSERT 대신 UPSERT를 쓰며 최신 데이터 대신 정해진 구간을 읽으라고 권합니다([Best Practices](https://airflow.apache.org/docs/apache-airflow/2.10.5/best-practices.html)).
+
+- **현재 저장소(코드)**: [`airflow/dags/lakehouse_refresh.py`](../../airflow/dags/lakehouse_refresh.py)(Airflow 2.10.5)는 `schedule='*/5 * * * *'`, `retries=0`, `max_active_runs=1`, `catchup=False`, `is_paused_upon_creation=True`, `dagrun_timeout` 25분 설정으로 `silver_then_dbt_build` 태스크에서 runner API를 호출해 Silver와 `dbt build` 전체를 실행합니다.
+- **Gold 30분 주기 증분 DAG(설계·미구현, 8회차 연결)**: Gold는 Silver를 30분 주기(`*/30 * * * *`) 배치로 읽습니다. 태스크 하나가 오늘 실습한 증분 실행 한 번(끝 스냅샷 고정 → `plan` 저장 → `gold_order`·`gold_daily` MERGE → `progress` 갱신)을 맡고 `retries=2`, `retry_delay` 3분으로 재시도합니다. `max_active_runs=1`로 두 실행이 같은 `progress`를 동시에 읽고 덮어쓰지 않게 막고, 범위 기준이 날짜 구간(`data_interval`)이 아니라 `progress` 스냅샷부터 `refs` `main`까지이므로 `catchup=False`([DAG Runs](https://airflow.apache.org/docs/apache-airflow/2.10.5/core-concepts/dag-run.html))로 최근 실행 한 번만 띄워 밀린 변경을 모두 처리합니다.
+- **책임 경계(설계)**: Airflow는 실패한 태스크를 다시 호출해 줄 뿐, 재시도 안전성은 작업 안의 `plan` 선저장과 `progress` 후갱신이 지키며(`s6`), 계산 결과 검증을 위해 정기 전체 대조(`EXCEPT`) 태스크를 별도 주기로 둡니다.
+
 ## 6. 집에서 따라 하기
 
 ### 먼저 확인할 것

@@ -27,6 +27,8 @@ PostgreSQL → Debezium → Kafka → Flink → Iceberg Bronze
 
 ## 빠른 실행 — 개인 Docker 환경에서
 
+1회차부터 7회차까지 수업에서 본 것을 처음부터 순서대로 돌려 보려면 [1~7회차 통합 따라 하기](docs/follow-along.md)를 봅니다. 단계마다 화면에서 확인할 문구와 숫자가 적혀 있습니다.
+
 영상과 함께 한 단계씩 직접 실행하려면 [3회차 따라하기 안내](labs/session03/follow-along/README.md)를 봅니다. 실행할 SQL 파일, 원천·Kafka·Bronze의 단계별 확인 방법, Kafka UI·Flink·MinIO 화면과 새 환불 지연 측정까지 이어집니다.
 
 Linux ARM 컨테이너를 실행할 Docker 환경이 필요합니다. 저장소를 clone한 뒤 루트 디렉터리에서 실행합니다. 강사 서버에 접속하거나 강사 전용 환경 설정을 복사할 필요는 없습니다.

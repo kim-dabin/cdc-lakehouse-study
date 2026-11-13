@@ -23,7 +23,7 @@ PostgreSQL → Debezium → Kafka → Flink → Iceberg Bronze
 
 3회차는 **Flink → Bronze 적재 심화, 개인 도메인·테이블 설계 확정**입니다. Flink·Iceberg의 정의와 대안을 비교하고, 공통 예제의 raw SQL과 writer·checkpoint·테이블 commit을 연결합니다. MinIO의 실제 파일에서 Catalog 참조·snapshot·같은 키 조회를 확인하고 운영 지표로 다음 조사 지점을 판단합니다. 개인 설계 30분과 리뷰 12분에는 도메인·원천 관계·변경/삭제 정책·토픽·Bronze 보존 정보와 후속 조인 키를 확정합니다. 공통 주문 예제로 개인 프로젝트의 주제를 통일하지 않습니다.
 
-**각자의 프로젝트**로 4회차에는 Spark Silver 중복 제거·MERGE, 5회차에는 dbt Gold·테스트, 6회차에는 수정·삭제·소급 정정을 구현합니다. 7회차에는 Iceberg rewrite_data_files·파티션·쿼리를 튜닝하고, 8회차에는 Airflow 연동·장애 복구·최종 리뷰를 진행합니다. 발표는 8회 스터디 이후 별도 일정입니다. [첫날 로드맵과 3회차 흐름 보기](labs/session03/student-guide.md).
+**각자의 프로젝트**로 4회차에는 Spark Silver 중복 제거·MERGE, 5회차에는 dbt Gold·테스트, 6회차에는 수정·삭제·소급 정정을 구현합니다. 7회차에는 Iceberg rewrite_data_files·파티션·쿼리를 튜닝하고, 8회차에는 지금까지의 설계 이유를 총정리하고 장애 대응·복구 절차를 점검합니다. 발표는 8회 스터디 이후 별도 일정입니다. [첫날 로드맵과 3회차 흐름 보기](labs/session03/student-guide.md).
 
 ## 빠른 실행 — 개인 Docker 환경에서
 

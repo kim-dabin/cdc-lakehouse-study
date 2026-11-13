@@ -86,3 +86,9 @@ Kafka·Spark·Docker·GitHub·S3·Airflow·Kubernetes의 기초를 다시 설명
 - [4회차: Spark SQL로 현재 상태를 만드는 Silver 설계](session04/README.md) — 고정 입력으로 최신 후보·버전 조건 MERGE·삭제·재실행을 검증하고 개인 Silver 계약과 SQL로 연결합니다.
 
 - [5회차: dbt로 Gold 지표와 테스트 설계하기](session05/README.md): 지표 정의부터 집계 단위·셀 행의 조건·fan-out까지 정하고 dbt 모델과 데이터 테스트로 남기는 과정을 공통 예제 코드로 읽습니다.
+
+- [6회차: 모델 계약·컬럼 리니지와 증분·소급 정정 설계하기](session06/README.md): 바뀐 키와 날짜만 다시 계산하는 증분 갱신과 재시도 설계를 실험으로 확인합니다.
+
+- [7회차: 작은 커밋이 쌓이면 — Iceberg 유지보수와 개인 프로젝트 리뷰](session07/README.md): 작은 파일 합치기, snapshot 만료, 고아 파일·manifest 정리를 순서대로 실행하고 측정합니다.
+
+- [8회차: 설계 이유 총정리와 장애 대응](session08/README.md): 층마다 고른 이유와 실무 점검 항목을 묶고, 실제 장애의 진단·복구·검증·재발 방지 절차를 따라갑니다.
